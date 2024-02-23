@@ -1,2 +1,7 @@
 dtuimldmtools
 ucimlrepo
+pygments
+json
+numpy
+pandas
+matplotlib
