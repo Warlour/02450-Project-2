@@ -42,11 +42,24 @@ class Dataset:
         return self.datasetrepo.__str__()
     
     def plot_features(self, x_axis: int = 0, y_axis: int = 1):
-        # Make a simple plot of the i'th attribute against the j'th attribute
-        plt.plot(self.X[:, x_axis], self.X[:, y_axis], "o")
+        X_c = self.X.copy()
+        y_c = self.y.copy() 
+        attributeNames_c = self.attributeNames.copy()
+        color = ["r", "g", "b"]
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
         plt.title(f"{self.uci_name} dataset")
-        plt.xlabel(self.attributeNames[x_axis])
-        plt.ylabel(self.attributeNames[y_axis])
+        for c in range(len(self.classNames)):
+            idx = y_c == c
+            # Create scatter plot
+            plt.scatter(
+                x=X_c[idx, x_axis], y=X_c[idx, y_axis], c=color[c], s=50, alpha=0.5, label=self.classNames[c]
+            ) # TODO: FIX ERROR
+        plt.legend()
+        plt.xlabel(attributeNames_c[x_axis])
+        plt.ylabel(attributeNames_c[y_axis])
+
+        plt.tight_layout()
         plt.show()
 
     def export_xlsx(self, filename: str = ""):
@@ -63,4 +76,4 @@ class Dataset:
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     dataset.plot_features(x_axis = 2, y_axis = 3)
-    # print(dataset.datasetrepo.metadata.uci_id)
+    
