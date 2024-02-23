@@ -62,5 +62,5 @@ class Dataset:
     
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
-    dataset.plot_attributes(x_axis = 2, y_axis = 3)
+    dataset.plot_features(x_axis = 2, y_axis = 3)
     # print(dataset.datasetrepo.metadata.uci_id)
