@@ -1,30 +1,29 @@
+# Reading data
 from ucimlrepo import fetch_ucirepo
 from functions import colorize_json
-import numpy as np
-  
-# fetch dataset 
-rice_cammeo_and_osmancik = fetch_ucirepo(id=545) 
+from numpy import unique
 
-### data ###
-X = rice_cammeo_and_osmancik.data.features 
-y = rice_cammeo_and_osmancik.data.targets 
-  
-### metadata ###
-#print(colorize_json(rice_cammeo_and_osmancik.metadata))
-  
-### Variable information ###
-# print(rice_cammeo_and_osmancik.variables) 
+# Plotting
+import matplotlib.pyplot as plt
 
-X = rice_cammeo_and_osmancik.data.features # Attribute values (features)
-y = rice_cammeo_and_osmancik.data.targets # Class values (targets)
+class Dataset:
+    def __init__(self, uci_repo_id: int):
+        # Load dataset from uci
+        self.datasetrepo = fetch_ucirepo(id=uci_repo_id)
 
-attributeNames = list(rice_cammeo_and_osmancik.data.headers)
-attributeNames.remove('Class')
+        ### Headers ###
+        self.X = self.datasetrepo.data.features # Attribute values (features)
+        self.y = self.datasetrepo.data.targets # Class values (targets)
 
-classNames = np.unique(y)
+        ### Headers ###
+        self.attributeNames = list(self.datasetrepo.data.headers)
+        self.attributeNames.remove('Class') # Remove 
+        self.classNames = unique(y)
 
-N = len(y)
-M = len(attributeNames)
-C = len(classNames)
+        ### Data lengths ###
+        self.N = len(self.y)
+        self.M = len(self.attributeNames)
+        self.C = len(self.classNames)
 
-# print(N, M, C, sep='\n')
+    def __str__(self):
+        return self.datasetrepo.__str__()
