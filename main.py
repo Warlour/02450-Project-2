@@ -77,19 +77,33 @@ class Dataset:
         plt.tight_layout()
         plt.show()
 
-    def plot_features(self):
+    def plot_features(self, exclude_features: Optional[list] = [], diag_kind: str = None, plot: bool = True):
+        """
+        Plot all features in a pairplot.
+
+        Parameters:
+        - exclude_features: List of features to exclude from the pairplot.
+        - diag_kind: Kind of plot for the diagonal subplots. {'auto', 'hist', 'kde', None}
+        - plot: Whether to plot the pairplot or not.
+        """
         X_dataframe_c = self.X_dataframe.copy()
 
-        # We need class as header for seaborn pairplot
-        attributeNames = self.datasetrepo.data.headers
+        # We need class as header for seaborn pairplot so we cannot use self.attributeNames
+        attributeNames = list(self.datasetrepo.data.headers)
+        for feature in exclude_features:
+            attributeNames.remove(feature)
+
+        # Remove excluded features
+        X_dataframe_c.drop(exclude_features, axis=1, inplace=True)
         
         # Add class column to dataframe
         X_dataframe_c['Class'] = self.y_dataframe
 
         df = pd.DataFrame(X_dataframe_c, columns=attributeNames)
-        sns.pairplot(df, hue='Class', diag_kind=None)
-        # plt.show()
-        plt.savefig(f"pairplot_{self.uci_id}_diagkind=None.png")
+        sns.pairplot(df, hue='Class', diag_kind=diag_kind)
+        if plot:
+            plt.show()
+        plt.savefig(f"pairplot_{self.uci_id}_diagkind={diag_kind}{f'_excluded{len(exclude_features)}' if exclude_features else ''}.png")
 
     def plot_boxplot(self, feature_idx: int = 0):
         """
@@ -157,4 +171,5 @@ if __name__ == "__main__":
 
     # dataset.plot_feature_compare(2, 3)
     # dataset.plot_boxplot(feature_idx = 1)
-    dataset.plot_features()
+    # dataset.plot_features(diag_kind = 'kde', plot = False)
+    dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], diag_kind = "hist", plot = False)
