@@ -1,7 +1,7 @@
 # exercise 3.1.5
 import numpy as np
 import scipy.linalg as linalg
-from ex3_1_4 import *
+from NR_ex3_1_4 import *
 
 from dtuimldmtools import similarity
 

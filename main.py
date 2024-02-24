@@ -41,20 +41,33 @@ class Dataset:
     def __str__(self):
         return self.datasetrepo.__str__()
     
-    def plot_features(self, x_axis: int = 0, y_axis: int = 1):
+    def plot_feature_compare(self, x_axis: int = 0, y_axis: int = 1):
+        # Create copies
         X_c = self.X.copy()
         y_c = self.y.copy() 
         attributeNames_c = self.attributeNames.copy()
-        color = ["r", "g", "b"]
+
+        # Colors for each class
+        color = ["royalblue", "orange"]
+
+        # Get single column containing the x and y values
+        x_values = X_c[:, x_axis]
+        y_values = X_c[:, y_axis]
+
+        # Create subplot
         plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
+        # rows, columns, index
+        plt.subplot(1, 1, 1)
         plt.title(f"{self.uci_name} dataset")
-        for c in range(len(self.classNames)):
-            idx = y_c == c
+
+        for c, cl in enumerate(self.classNames):
+            # Get list of boolean values for each class
+            idx = y_c == cl
+            idx = idx.ravel() # Make 2D 1-column array into 1D array
+
             # Create scatter plot
-            plt.scatter(
-                x=X_c[idx, x_axis], y=X_c[idx, y_axis], c=color[c], s=50, alpha=0.5, label=self.classNames[c]
-            ) # TODO: FIX ERROR
+            plt.scatter(x_values[idx], y_values[idx], color = color[c], label = self.classNames[c], edgecolors='black')
+
         plt.legend()
         plt.xlabel(attributeNames_c[x_axis])
         plt.ylabel(attributeNames_c[y_axis])
