@@ -13,6 +13,7 @@ pd.set_option('display.max_columns', None)
 
 # Plotting
 import matplotlib.pyplot as plt
+import seaborn as sns
 import itertools
 
 class Dataset:
@@ -76,67 +77,19 @@ class Dataset:
         plt.tight_layout()
         plt.show()
 
-    def plot_features(self): # TODO: Not done!!!
-        # Create copies
-        X_c = self.X.copy()
-        y_c = self.y.copy() 
-        attributeNames_c = self.attributeNames.copy()
+    def plot_features(self):
+        X_dataframe_c = self.X_dataframe.copy()
 
-        # Colors for each class
-        color = ["royalblue", "orange"]
-
-        num_features = self.M
-
-        # Calculate rows and columns for grid
-        num_rows = num_features //  2 if num_features %  2 ==  0 else num_features //  2 +  1
-        num_cols =  2
-
-        # Create figure with grid of subplots
-        fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, 5 * num_rows))
-        fig.suptitle(f"{self.uci_name} dataset")
-
-        # Flatten arrays with one column
-        print(axs, "\n")
-
-        print(axs.shape)
-        axs = axs.flatten()
-        print(axs)
-
-        feature_pairs = list(itertools.product(range(num_features), repeat=2)) # 7 x 7 = 49 pairs (maybe we should take some away)
-        # print(feature_pairs)
-
-        for i, (x_axis, y_axis) in enumerate(feature_pairs):
-            # print(i)
-            row = i // num_cols # Integer division
-            col = i % num_cols # Remainder
-
-            # Get single column containing the x and y values
-            x_values = X_c[:, x_axis]
-            y_values = X_c[:, y_axis]
-
-            # Select current subplot
-            ax = axs[row, col]
-
-            for c, cl in enumerate(self.classNames):
-                # Get list of boolean values for each class
-                idx = y_c == cl
-                idx = idx.ravel() # Make 2D 1-column array into 1D array
-
-                # Create scatter points
-                ax.scatter(x_values[idx], y_values[idx], color = color[c], label=self.classNames[c], edgecolors='black')
-            
-            ax.set_xlabel(attributeNames_c[x_axis])
-            ax.set_ylabel(attributeNames_c[y_axis])
-            ax.legend()
+        # We need class as header for seaborn pairplot
+        attributeNames = self.datasetrepo.data.headers
         
-        # Remove unused subplots
-        for i in range(len(feature_pairs), num_rows * num_cols):
-            row = i // num_cols
-            col = i % num_cols
-            fig.delaxes(axs[row, col])
+        # Add class column to dataframe
+        X_dataframe_c['Class'] = self.y_dataframe
 
-        plt.tight_layout()
-        plt.show()
+        df = pd.DataFrame(X_dataframe_c, columns=attributeNames)
+        sns.pairplot(df, hue='Class', diag_kind=None)
+        # plt.show()
+        plt.savefig(f"pairplot_{self.uci_id}_diagkind=None.png")
 
     def plot_boxplot(self, feature_idx: int = 0):
         """
@@ -203,6 +156,5 @@ if __name__ == "__main__":
     # Targets: Class (Cammeo, Osmancik)
 
     # dataset.plot_feature_compare(2, 3)
-    # dataset.plot_features()
-    dataset.plot_boxplot(feature_idx = 1)
-    
+    # dataset.plot_boxplot(feature_idx = 1)
+    dataset.plot_features()
