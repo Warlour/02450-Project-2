@@ -4,3 +4,4 @@ pygments
 numpy
 pandas
 matplotlib
+openpyxl
