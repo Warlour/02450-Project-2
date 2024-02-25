@@ -249,7 +249,7 @@ class Dataset:
             class_mask = y_c == cl
             class_mask = class_mask.ravel() # Make 2D 1-column array into 1D array
 
-            plt.plot(self.Z[class_mask, i], self.Z[class_mask, j], "o", color=color[c], alpha=0.5)
+            plt.plot(self.Z[class_mask, i], self.Z[class_mask, j], "o", color=color[c], alpha=0.5, markeredgecolor='black', markeredgewidth=0.3)
 
         plt.legend(self.classNames)
         plt.xlabel(f"PC{i + 1}")
@@ -337,7 +337,7 @@ if __name__ == "__main__":
 
 
     # dataset.PCA_plot_variance_explained(threshold=0.5)
-    # dataset.PCA_plot_PCs(indices=(0, 1))
+    dataset.PCA_plot_PCs(indices=(2, 3))
     # dataset.PCA_pairplot()
-    dataset.PCA_pairplot(exclude_pcs=["PC4", "PC5", "PC6", "PC7"])
+    # dataset.PCA_pairplot(exclude_pcs=["PC4", "PC5", "PC6", "PC7"])
     plt.show()
