@@ -43,6 +43,10 @@ class Dataset:
         self.M = len(self.attributeNames)
         self.C = len(self.classNames)
 
+        self.PCA_run = False
+
+        self.colors = ["royalblue", "orange"]
+
     def __str__(self):
         return self.datasetrepo.__str__()
     
@@ -51,9 +55,6 @@ class Dataset:
         X_c = self.X.copy()
         y_c = self.y.copy() 
         attributeNames_c = self.attributeNames.copy()
-
-        # Colors for each class
-        color = ["royalblue", "orange"]
 
         # Get single column containing the x and y values
         x_values = X_c[:, x_axis]
@@ -71,7 +72,7 @@ class Dataset:
             idx = idx.ravel() # Make 2D 1-column array into 1D array
 
             # Create scatter points
-            plt.scatter(x_values[idx], y_values[idx], color = color[i], label = self.classNames[i], edgecolors='black')
+            plt.scatter(x_values[idx], y_values[idx], color = self.colors[i], label = self.classNames[i], edgecolors='black')
 
         plt.legend()
         plt.xlabel(attributeNames_c[x_axis])
@@ -80,10 +81,35 @@ class Dataset:
         plt.tight_layout()
         plt.show()
 
+    def plot_sns_feature(self, feature: str, kind: Literal['hist', 'kde', 'ecdf'], save: bool = True):
+        if feature not in self.attributeNames:
+            raise ValueError(f"Invalid feature: {feature}. Available features: {', '.join(self.attributeNames)}")
+
+        # Create copies
+        X_dataframe_c = self.X_dataframe.copy()
+
+        exclude_features = self.attributeNames.copy()
+
+        exclude_features.remove(feature)
+
+        # Remove excluded features
+        X_dataframe_c.drop(exclude_features, axis=1, inplace=True)
+
+        # Add Class for hue
+        X_dataframe_c['Class'] = self.y_dataframe
+        
+        # Create Pandas DataFrame
+        df = pd.DataFrame(X_dataframe_c, columns=X_dataframe_c.columns)
+
+        p = sns.displot(data=df, x=feature, hue="Class", alpha=0.5, kind=kind, multiple='stack', bw_adjust=5)
+
+        if save:
+            p.savefig(f"{feature}_{kind}.png")
+
     def plot_features(self, 
                       exclude_features: Optional[list] = [], 
                       kind: Literal['scatter', 'kde', 'hist', 'reg'] = "scatter", 
-                      diag_kind: Literal['auto', 'hist', 'kde'] = None, 
+                      diag_kind: Literal['auto', 'hist', 'kde'] = None,
                       plot: bool = True):
         """
         Plot all features in a pairplot.
@@ -137,7 +163,7 @@ class Dataset:
         boxplot_data = []
         values = X_c[:, feature_idx]
 
-        colors = ["royalblue", "orange"]
+        
 
         for i, cl in enumerate(self.classNames):
             # Get list of boolean values for each class
@@ -162,7 +188,7 @@ class Dataset:
         ax.set_xticks(range(1, len(self.classNames) + 1))
         ax.set_xticklabels(self.classNames)
 
-        for patch, color in zip(bplot['boxes'], colors):
+        for patch, color in zip(bplot['boxes'], self.colors):
             patch.set_facecolor(color)
 
         plt.tight_layout()
@@ -201,11 +227,11 @@ class Dataset:
         # PCA by computing SVD of Y
         print("Computing SVD...")
         U, S, Vh = svd(Y, full_matrices=False)
-        V = Vh.T
+        self.V = Vh.T
 
         ### Principal components ###
         # Project the centered data onto principal component space
-        self.Z = Y @ V
+        self.Z = Y @ self.V
 
         ### Variance explained ###
         # Compute variance explained by principal components
@@ -241,15 +267,13 @@ class Dataset:
         f = plt.figure()
         plt.title("PCA of " + self.uci_name + " dataset")
 
-        # Colors for each class
-        color = ["royalblue", "orange"]
 
         for c, cl in enumerate(self.classNames):
             # Get list of boolean values for each class
             class_mask = y_c == cl
             class_mask = class_mask.ravel() # Make 2D 1-column array into 1D array
 
-            plt.plot(self.Z[class_mask, i], self.Z[class_mask, j], "o", color=color[c], alpha=0.5, markeredgecolor='black', markeredgewidth=0.3)
+            plt.plot(self.Z[class_mask, i], self.Z[class_mask, j], "o", color=self.colors[c], alpha=0.5, markeredgecolor='black', markeredgewidth=0.3)
 
         plt.legend(self.classNames)
         plt.xlabel(f"PC{i + 1}")
@@ -315,29 +339,62 @@ class Dataset:
             if pc in df.columns:
                 df.drop(pc, axis=1, inplace=True)
 
+
+        print(df.head())
         # Pairplot with seaborn
         pairplot = sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
 
         if save:
             pairplot.savefig(f"pairplot_PCA{f'_excluded{len(exclude_pcs)}' if exclude_pcs else ''}.png")
 
+    def PCA_plot_component_coeff(self, pcs: Optional[list] = []):
+        '''
+        Plot the principal component coefficients.
+
+        Parameters:
+        - pcs: The principal components to plot.
+        '''
+        if not self.PCA_run:
+            self.PCA()
+        
+        legendStrs = [f"PC{i+1}" for i in range(len(pcs))]
+        c = ["r", "g", "b"]
+        bw = 0.2
+        r = np.arange(1, self.M + 1)
+        for i in pcs:
+            plt.bar(r + i * bw, self.V[:, i], width=bw)
+        
+        # Shorten attribute names to 4 letters
+        attributeNames = [name[:4] for name in self.attributeNames]
+        plt.xticks(r + bw, attributeNames)
+        plt.xlabel("Features")
+        plt.ylabel("Coefficients")
+        plt.legend(legendStrs)
+        plt.grid()
+        plt.title(self.uci_name + ": PCA Component Coefficients")
 
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    # dataset.plot_feature_compare(2, 3)
+    # dataset.plot_feature_compare(0, 0)
+
     # dataset.plot_boxplot(feature_idx = 1)
     # dataset.plot_features(kind='kde', diag_kind = 'kde', plot = False)
     # dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], kind='kde', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(exclude_features = ["Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Eccentricity", "Convex_Area", "Extent"], kind='kde', diag_kind = 'kde', plot = False)
     # dataset.plot_features(exclude_features = ["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Convex_Area"], kind='kde', diag_kind = 'kde', plot = False)
+    # dataset.plot_sns_feature("Area", kind="kde", save=False)
+    # dataset.plot_sns_feature("Extent", kind="kde", save=False)
+    # dataset.plot_sns_feature("Convex_Area", kind="kde", save=False)
+    dataset.PCA_plot_component_coeff(pcs=[0, 1, 2])
 
-    dataset.PCA()
+    # dataset.PCA()
 
 
     # dataset.PCA_plot_variance_explained(threshold=0.5)
-    dataset.PCA_plot_PCs(indices=(2, 3))
+    # dataset.PCA_plot_PCs(indices=(2, 3))
     # dataset.PCA_pairplot()
     # dataset.PCA_pairplot(exclude_pcs=["PC4", "PC5", "PC6", "PC7"])
     plt.show()
