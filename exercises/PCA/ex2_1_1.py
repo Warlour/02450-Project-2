@@ -26,8 +26,13 @@ for i, col_id in enumerate(range(3, 11)):
 
 # Compute values of N, M and C.
 N = len(y)
+
 M = len(attributeNames)
 C = len(classNames)
 print(N, M)
+
+print(y)
+print(attributeNames)
+print(classNames)
 
 print("Ran Exercise 2.1.1")

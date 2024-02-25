@@ -3,6 +3,7 @@ from typing import Optional, Literal
 
 # Reading data
 from ucimlrepo import fetch_ucirepo
+from ucimlrepo.dotdict import dotdict # Dataset datatype
 from functions import colorize_json
 import numpy as np
 import pandas as pd
@@ -22,9 +23,9 @@ import itertools
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
         # Load dataset from uci
-        self.datasetrepo = fetch_ucirepo(name=uci_name, id=uci_id)
-        self.uci_name = self.datasetrepo.metadata.name
-        self.uci_id = self.datasetrepo.metadata.uci_id
+        self.datasetrepo: dotdict = fetch_ucirepo(name=uci_name, id=uci_id)
+        self.uci_name: str = self.datasetrepo.metadata.name
+        self.uci_id: int = self.datasetrepo.metadata.uci_id
 
         ### Data ###
         self.X_dataframe = self.datasetrepo.data.features # Attribute values (features)
@@ -107,12 +108,18 @@ class Dataset:
         # Add class column to dataframe
         X_dataframe_c['Class'] = self.y_dataframe
 
+        # Create Pandas DataFrame
         df = pd.DataFrame(X_dataframe_c, columns=attributeNames)
+
+        # Create pairplot
         print("Creating pairplot with features: ", ', '.join(attributeNames), "...", sep="")
         sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
+
+        figname = f"pairplot_{self.uci_id}_kind={kind}_diagkind={diag_kind}{f'_excluded{len(exclude_features)}' if exclude_features else ''}.png"
+        print(f"Saving {figname}...")
+        plt.savefig(figname)
         if plot:
             plt.show()
-        plt.savefig(f"pairplot_{self.uci_id}_kind={kind}_diagkind={diag_kind}{f'_excluded{len(exclude_features)}' if exclude_features else ''}.png")
 
     def plot_boxplot(self, feature_idx: int = 0):
         """
@@ -174,7 +181,125 @@ class Dataset:
         df.to_excel(filename, index=True)
 
     def PCA(self):
-        Y = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
+        '''
+        Perform PCA on the dataset and plot the variance explained by the principal components, aswell as the given principal components in a scatter plot.
+
+        Parameters:
+        - threshold: The threshold for the cumulative variance explained by the principal components.
+        - plot: Whether to create plots.
+        - save: Whether to save plots.
+        - indices: The indices of the principal components to be plotted.
+        '''
+        print("Running PCA...")
+        X_c = self.X.copy()
+        X_c = X_c.astype(float)
+
+        # Subtract mean value from data
+        print("Subtracting mean value from data...")
+        Y = X_c - np.ones((self.N, 1)) * X_c.mean(0)
+        Y = Y * (1 / np.std(Y, 0))
+
+        # PCA by computing SVD of Y
+        print("Computing SVD...")
+        U, S, Vh = svd(Y, full_matrices=False)
+        V = Vh.T
+
+        ### Principal components ###
+        # Project the centered data onto principal component space
+        self.Z = Y @ V
+
+        ### Variance explained ###
+        # Compute variance explained by principal components
+        print("Computing variance explained by principal components...")
+        self.rho = (S * S) / (S * S).sum()
+
+        # Print all
+        print("Rho:", self.rho)
+
+        self.PCA_run = True
+
+    def PCA_plot_PCs(self,
+                     save: bool = True,
+                     indices: Optional[tuple] = (0, 1)):
+        '''
+        Plot given principal components in a scatter plot.
+
+        Parameters:
+        - save: Whether to save the plot.
+        - indices: The indices of the principal components to be plotted.
+        '''
+        if not self.PCA_run:
+            self.PCA()
+
+        # Copies
+        y_c = self.y.copy()
+
+        # Indices of the principal components to be plotted
+        # i, j are principal components:
+        i = indices[0]
+        j = indices[1]
+
+        f = plt.figure()
+        plt.title("PCA of " + self.uci_name + " dataset")
+
+        # Colors for each class
+        color = ["royalblue", "orange"]
+
+        for c, cl in enumerate(self.classNames):
+            # Get list of boolean values for each class
+            class_mask = y_c == cl
+            class_mask = class_mask.ravel() # Make 2D 1-column array into 1D array
+
+            plt.plot(self.Z[class_mask, i], self.Z[class_mask, j], "o", color=color[c], alpha=0.5)
+
+        plt.legend(self.classNames)
+        plt.xlabel(f"PC{i + 1}")
+        plt.ylabel(f"PC{j + 1}")
+        
+        figname = f"PC{i+1}-{j+1}.png"
+        if save:
+            print(f"Saving {figname}...")
+            f.savefig(figname)
+
+    def PCA_plot_variance_explained(self,
+                                    save: bool = True,
+                                    threshold: float = 0.9):
+        '''
+        Plot variance explained by principal components.
+
+        Parameters:
+        - save: Whether to save the plot.
+        - threshold: The threshold for the cumulative variance explained by the principal components.
+        '''
+        if not self.PCA_run:
+            self.PCA()
+        
+        # Plot variance explained
+        vp = plt.figure()
+        plt.plot(range(1, len(self.rho) + 1), self.rho, "x-")
+        plt.plot(range(1, len(self.rho) + 1), np.cumsum(self.rho), "o-")
+        plt.plot([1, len(self.rho)], [threshold, threshold], "k--")
+        plt.title("Variance explained by principal components")
+        plt.xlabel("Principal component")
+        plt.ylabel("Variance explained")
+        plt.legend(["Individual", "Cumulative", "Threshold"])
+        plt.grid()
+
+        figname = "variance_explained.png"
+        if save:
+            print(f"Saving {figname}...")
+            vp.savefig(figname)
+
+    def PCA_pairplot(self,
+                     threshold: float = 0.9,
+                     plot: bool = True,
+                     save: bool = True,
+                     indices: Optional[tuple] = (0, 1)):
+        if not self.PCA_run:
+            self.PCA()
+
+        
+
 
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
@@ -183,6 +308,14 @@ if __name__ == "__main__":
 
     # dataset.plot_feature_compare(2, 3)
     # dataset.plot_boxplot(feature_idx = 1)
-    dataset.plot_features(kind='kde', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(kind='kde', diag_kind = 'kde', plot = False)
     # dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], kind='kde', diag_kind = 'kde', plot = False)
     # dataset.plot_features(exclude_features = ["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Convex_Area"], kind='kde', diag_kind = 'kde', plot = False)
+
+    dataset.PCA()
+
+    indices=(2, 3)
+    dataset.PCA_plot_variance_explained()
+    dataset.PCA_plot_PCs(indices=indices)
+    # dataset.PCA_pairplot()
+    plt.show()

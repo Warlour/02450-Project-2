@@ -4,6 +4,7 @@ from ex2_1_1 import *
 from matplotlib.pyplot import figure, legend, plot, show, title, xlabel, ylabel
 from scipy.linalg import svd
 
+print(X)
 # Subtract mean value from data
 Y = X - np.ones((N, 1)) * X.mean(0)
 
