@@ -101,7 +101,15 @@ class Dataset:
         # Create Pandas DataFrame
         df = pd.DataFrame(X_dataframe_c, columns=X_dataframe_c.columns)
 
-        p = sns.displot(data=df, x=feature, hue="Class", alpha=0.5, kind=kind, multiple='stack', bw_adjust=5)
+        if kind == "kde":
+            p = sns.displot(data=df, x=feature, hue="Class", alpha=0.5, kind=kind, multiple='stack', bw_adjust=5)
+            plt.title(f"Kernel Density Estimation of {feature}")
+        elif kind == "hist":
+            p = sns.displot(data=df, x=feature, hue="Class", alpha=0.5, kind=kind, multiple='stack')
+            plt.title(f"Histogram of {feature}")
+        elif kind == "ecdf":
+            p = sns.displot(data=df, x=feature, hue="Class", alpha=0.5, kind=kind)
+            plt.title(f"Empirical Cumulative Distribution Function of {feature}")
 
         if save:
             p.savefig(f"{feature}_{kind}.png")
@@ -385,10 +393,18 @@ if __name__ == "__main__":
     # dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], kind='kde', diag_kind = 'kde', plot = False)
     # dataset.plot_features(exclude_features = ["Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Eccentricity", "Convex_Area", "Extent"], kind='kde', diag_kind = 'kde', plot = False)
     # dataset.plot_features(exclude_features = ["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Convex_Area"], kind='kde', diag_kind = 'kde', plot = False)
-    # dataset.plot_sns_feature("Area", kind="kde", save=False)
-    # dataset.plot_sns_feature("Extent", kind="kde", save=False)
-    # dataset.plot_sns_feature("Convex_Area", kind="kde", save=False)
-    dataset.PCA_plot_component_coeff(pcs=[0, 1, 2])
+    # dataset.plot_sns_feature("Area", kind="kde", save=True)
+    # dataset.plot_sns_feature("Extent", kind="kde", save=True)
+    # dataset.plot_sns_feature("Convex_Area", kind="kde", save=True)
+
+    # dataset.plot_sns_feature("Area", kind="hist", save=True)
+    # dataset.plot_sns_feature("Extent", kind="hist", save=True)
+    # dataset.plot_sns_feature("Convex_Area", kind="hist", save=True)
+
+    # dataset.plot_sns_feature("Area", kind="ecdf", save=True)
+    # dataset.plot_sns_feature("Extent", kind="ecdf", save=True)
+    # dataset.plot_sns_feature("Convex_Area", kind="ecdf", save=True)
+    # dataset.PCA_plot_component_coeff(pcs=[0, 1, 2])
 
     # dataset.PCA()
 
