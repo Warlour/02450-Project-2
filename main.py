@@ -1,5 +1,5 @@
 # Python
-from typing import Optional
+from typing import Optional, Literal
 
 # Reading data
 from ucimlrepo import fetch_ucirepo
@@ -10,6 +10,9 @@ import pandas as pd
 # Set pandas display options
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
+
+# PCA
+from scipy.linalg import svd
 
 # Plotting
 import matplotlib.pyplot as plt
@@ -77,13 +80,18 @@ class Dataset:
         plt.tight_layout()
         plt.show()
 
-    def plot_features(self, exclude_features: Optional[list] = [], diag_kind: str = None, plot: bool = True):
+    def plot_features(self, 
+                      exclude_features: Optional[list] = [], 
+                      kind: Literal['scatter', 'kde', 'hist', 'reg'] = "scatter", 
+                      diag_kind: Literal['auto', 'hist', 'kde'] = None, 
+                      plot: bool = True):
         """
         Plot all features in a pairplot.
 
         Parameters:
         - exclude_features: List of features to exclude from the pairplot.
-        - diag_kind: Kind of plot for the diagonal subplots. {'auto', 'hist', 'kde', None}
+        - kind: Kind of plot for the non-diagonal subplots. {['scatter'], 'kde', 'hist', 'reg'}
+        - diag_kind: Kind of plot for the diagonal subplots. {'auto', 'hist', 'kde', [None]}
         - plot: Whether to plot the pairplot or not.
         """
         X_dataframe_c = self.X_dataframe.copy()
@@ -100,10 +108,11 @@ class Dataset:
         X_dataframe_c['Class'] = self.y_dataframe
 
         df = pd.DataFrame(X_dataframe_c, columns=attributeNames)
-        sns.pairplot(df, hue='Class', diag_kind=diag_kind)
+        print("Creating pairplot with features: ", ', '.join(attributeNames), "...", sep="")
+        sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
         if plot:
             plt.show()
-        plt.savefig(f"pairplot_{self.uci_id}_diagkind={diag_kind}{f'_excluded{len(exclude_features)}' if exclude_features else ''}.png")
+        plt.savefig(f"pairplot_{self.uci_id}_kind={kind}_diagkind={diag_kind}{f'_excluded{len(exclude_features)}' if exclude_features else ''}.png")
 
     def plot_boxplot(self, feature_idx: int = 0):
         """
@@ -163,7 +172,10 @@ class Dataset:
 
         # Export
         df.to_excel(filename, index=True)
-    
+
+    def PCA(self):
+        Y = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
+
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
@@ -171,5 +183,6 @@ if __name__ == "__main__":
 
     # dataset.plot_feature_compare(2, 3)
     # dataset.plot_boxplot(feature_idx = 1)
-    # dataset.plot_features(diag_kind = 'kde', plot = False)
-    dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], diag_kind = "hist", plot = False)
+    dataset.plot_features(kind='kde', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], kind='kde', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(exclude_features = ["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Convex_Area"], kind='kde', diag_kind = 'kde', plot = False)
