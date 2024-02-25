@@ -285,20 +285,42 @@ class Dataset:
         plt.legend(["Individual", "Cumulative", "Threshold"])
         plt.grid()
 
-        figname = "variance_explained.png"
+        figname = f"variance_explained-threshold{threshold}.png"
         if save:
             print(f"Saving {figname}...")
             vp.savefig(figname)
 
     def PCA_pairplot(self,
-                     threshold: float = 0.9,
-                     plot: bool = True,
-                     save: bool = True,
-                     indices: Optional[tuple] = (0, 1)):
+                     exclude_pcs: Optional[list] = [],
+                     kind: Literal['scatter', 'kde', 'hist', 'reg'] = "scatter",
+                     diag_kind: Literal['auto', 'hist', 'kde'] = None,
+                     save: bool = True):
+        '''
+        Create a pairplot of all combinations of principal components.
+
+        Parameters:
+        - kind: Kind of plot for the non-diagonal subplots. {['scatter'], 'kde', 'hist', 'reg'}
+        - diag_kind: Kind of plot for the diagonal subplots. {'auto', 'hist', 'kde', [None]}
+        - save: Whether to save the plot.
+        '''
         if not self.PCA_run:
             self.PCA()
 
-        
+        Z_c = self.Z.copy()
+
+        # Create Pandas DataFrame from PCA
+        df = pd.DataFrame(Z_c, columns=[f"PC{i+1}" for i in range(Z_c.shape[1])])
+        df['Class'] = self.y_dataframe
+
+        for pc in exclude_pcs:
+            if pc in df.columns:
+                df.drop(pc, axis=1, inplace=True)
+
+        # Pairplot with seaborn
+        pairplot = sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
+
+        if save:
+            pairplot.savefig(f"pairplot_PCA{f'_excluded{len(exclude_pcs)}' if exclude_pcs else ''}.png")
 
 
 if __name__ == "__main__":
@@ -314,8 +336,9 @@ if __name__ == "__main__":
 
     dataset.PCA()
 
-    indices=(2, 3)
-    dataset.PCA_plot_variance_explained()
-    dataset.PCA_plot_PCs(indices=indices)
+
+    # dataset.PCA_plot_variance_explained(threshold=0.5)
+    # dataset.PCA_plot_PCs(indices=(0, 1))
     # dataset.PCA_pairplot()
+    dataset.PCA_pairplot(exclude_pcs=["PC4", "PC5", "PC6", "PC7"])
     plt.show()
