@@ -18,7 +18,6 @@ from scipy.linalg import svd
 # Plotting
 import matplotlib.pyplot as plt
 import seaborn as sns
-import itertools
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
