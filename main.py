@@ -391,12 +391,12 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    dataset.plot_features(features = ["Area", "Perimeter", "Major_Axis_Length"], kind='scatter', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(features = ["Area", "Perimeter", "Major_Axis_Length"], kind='scatter', diag_kind = 'kde', plot = False)
     dataset.plot_sns_feature("Minor_Axis_Length", kind='kde', save=True)
-    dataset.plot_features(features = ["Eccentricity", "Convex_Area", "Extent"], kind='scatter', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(features = ["Eccentricity", "Convex_Area", "Extent"], kind='scatter', diag_kind = 'kde', plot = False)
 
-    dataset.plot_features(features = ["Area", "Perimeter", "Major_Axis_Length"], kind='reg', diag_kind = 'kde', plot = False)
-    dataset.plot_features(features = ["Eccentricity", "Convex_Area", "Extent"], kind='reg', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(features = ["Area", "Perimeter", "Major_Axis_Length"], kind='reg', diag_kind = 'kde', plot = False)
+    # dataset.plot_features(features = ["Eccentricity", "Convex_Area", "Extent"], kind='reg', diag_kind = 'kde', plot = False)
 
     # dataset.PCA_plot_component_coeff(pcs=[0, 1, 2])
 
