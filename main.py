@@ -115,15 +115,15 @@ class Dataset:
             p.savefig(f"{feature}_{kind}.png")
 
     def plot_features(self, 
-                      exclude_features: Optional[list] = [], 
+                      features: Optional[list] = [], 
                       kind: Literal['scatter', 'kde', 'hist', 'reg'] = "scatter", 
-                      diag_kind: Literal['auto', 'hist', 'kde'] = None,
+                      diag_kind: Literal['auto', 'hist', 'kde', None] = None,
                       plot: bool = True):
         """
         Plot all features in a pairplot.
 
         Parameters:
-        - exclude_features: List of features to exclude from the pairplot.
+        - features: List of features to include from the pairplot.
         - kind: Kind of plot for the non-diagonal subplots. {['scatter'], 'kde', 'hist', 'reg'}
         - diag_kind: Kind of plot for the diagonal subplots. {'auto', 'hist', 'kde', [None]}
         - plot: Whether to plot the pairplot or not.
@@ -132,6 +132,11 @@ class Dataset:
 
         # We need class as header for seaborn pairplot so we cannot use self.attributeNames
         attributeNames = list(self.datasetrepo.data.headers)
+
+        exclude_features = self.attributeNames.copy()
+        for feature in features:
+            exclude_features.remove(feature)
+
         for feature in exclude_features:
             attributeNames.remove(feature)
 
@@ -147,8 +152,8 @@ class Dataset:
         # Create pairplot
         print("Creating pairplot with features: ", ', '.join(attributeNames), "...", sep="")
         sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
-
-        figname = f"pairplot_{self.uci_id}_kind={kind}_diagkind={diag_kind}{f'_excluded{len(exclude_features)}' if exclude_features else ''}.png"
+        included: str = ', '.join(features)
+        figname = f"pairplot_{self.uci_id}_kind={kind}_diagkind={diag_kind}_{f'incl={included}' if features else 'all'}.png"
         print(f"Saving {figname}...")
         plt.savefig(figname)
         if plot:
@@ -386,24 +391,13 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    # dataset.plot_feature_compare(0, 0)
+    dataset.plot_features(features = ["Area", "Perimeter", "Major_Axis_Length"], kind='scatter', diag_kind = 'kde', plot = False)
+    dataset.plot_sns_feature("Minor_Axis_Length", kind='kde', save=True)
+    dataset.plot_features(features = ["Eccentricity", "Convex_Area", "Extent"], kind='scatter', diag_kind = 'kde', plot = False)
 
-    # dataset.plot_boxplot(feature_idx = 1)
-    # dataset.plot_features(kind='kde', diag_kind = 'kde', plot = False)
-    # dataset.plot_features(exclude_features = ["Extent", "Eccentricity"], kind='kde', diag_kind = 'kde', plot = False)
-    # dataset.plot_features(exclude_features = ["Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Eccentricity", "Convex_Area", "Extent"], kind='kde', diag_kind = 'kde', plot = False)
-    # dataset.plot_features(exclude_features = ["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length", "Convex_Area"], kind='kde', diag_kind = 'kde', plot = False)
-    # dataset.plot_sns_feature("Area", kind="kde", save=True)
-    # dataset.plot_sns_feature("Extent", kind="kde", save=True)
-    # dataset.plot_sns_feature("Convex_Area", kind="kde", save=True)
+    dataset.plot_features(features = ["Area", "Perimeter", "Major_Axis_Length"], kind='reg', diag_kind = 'kde', plot = False)
+    dataset.plot_features(features = ["Eccentricity", "Convex_Area", "Extent"], kind='reg', diag_kind = 'kde', plot = False)
 
-    # dataset.plot_sns_feature("Area", kind="hist", save=True)
-    # dataset.plot_sns_feature("Extent", kind="hist", save=True)
-    # dataset.plot_sns_feature("Convex_Area", kind="hist", save=True)
-
-    # dataset.plot_sns_feature("Area", kind="ecdf", save=True)
-    # dataset.plot_sns_feature("Extent", kind="ecdf", save=True)
-    # dataset.plot_sns_feature("Convex_Area", kind="ecdf", save=True)
     # dataset.PCA_plot_component_coeff(pcs=[0, 1, 2])
 
     # dataset.PCA()
