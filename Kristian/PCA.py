@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from Import import *
+from Kristian.Import import *
 from scipy.linalg import svd
 
 
