@@ -4,7 +4,7 @@ from typing import Optional, Literal
 # Reading data
 from ucimlrepo import fetch_ucirepo
 from ucimlrepo.dotdict import dotdict # Dataset datatype
-from functions import colorize_json
+from functions import *
 import numpy as np
 import pandas as pd
 
@@ -141,6 +141,9 @@ class Dataset:
         - diag_kind: Kind of plot for the diagonal subplots. {'auto', 'hist', 'kde', [None]}
         - plot: Whether to plot the pairplot or not.
         """
+        if not features:
+            features = self.attributeNames
+        
         X_dataframe_c = self.X_dataframe.copy()
 
         # We need class as header for seaborn pairplot so we cannot use self.attributeNames
@@ -163,11 +166,18 @@ class Dataset:
         df = pd.DataFrame(X_dataframe_c, columns=attributeNames)
 
         # Create pairplot
-        print("Creating pairplot with features: ", ', '.join(attributeNames), "...", sep="")
-        sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
-        included: str = ', '.join(features)
+        print("Creating pairplot with features: ", ', '.join(features), "...", sep="")
+        # plt.rcParams['axes.labelsize'] = 50
+        sns.set_context("paper", font_scale=1.5)
+        p = sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
+        # p.tick_params(axis='both', which="minor", labelsize=50)
+
+        if features == self.attributeNames:
+            included: str = "all"
+        else:
+            included: str = ', '.join(features)
         figname = f"pairplot_{self.uci_id}_kind={kind}_diagkind={diag_kind}_{f'incl={included}' if features else 'all'}.png"
-        plt.tight_layout()
+        # plt.tight_layout()
         if save:
             print(f"Saving {figname}...")
             plt.savefig(figname)
@@ -266,6 +276,7 @@ class Dataset:
         print("Computing SVD...")
         U, S, Vh = svd(Y, full_matrices=False)
         self.V = Vh.T
+        self.S = S
 
         ### Principal components ###
         # Project the centered data onto principal component space
@@ -379,9 +390,10 @@ class Dataset:
                 df.drop(pc, axis=1, inplace=True)
 
 
-        print(df.head())
+        print("Creating PCA pairplot...")
         # Pairplot with seaborn
-        pairplot = sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind)
+        pairplot = sns.pairplot(df, hue='Class', kind=kind, diag_kind=diag_kind,)
+        plt.rcParams['axes.labelsize'] = 50
         pairplot.tight_layout()
 
         if save:
@@ -424,16 +436,22 @@ if __name__ == "__main__":
     # Targets: Class (Cammeo, Osmancik)
 
     # dataset.plot_feature_compare(0, 1, save=False)
-    dataset.plot_sns_feature("Area", 'kde', save=True)
+    # dataset.plot_sns_feature("Area", 'kde', save=True)
     # dataset.plot_features(features=["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length"], kind="scatter", diag_kind="kde", save=False)
+    dataset.plot_features(kind="scatter", diag_kind="kde", save=True)
     # dataset.plot_boxplot(0, save=True)
     # dataset.export_xlsx()
 
     # dataset.PCA()
+    # print("\n Cum sum", np.cumsum(dataset.rho))
+    # print("\n Length of rho", len(dataset.rho))
+    # print("\n V", dataset.V)
+    # print("\n S", dataset.S)
     # dataset.PCA_plot_PCs(save = False, indices=(0, 1))
     # dataset.PCA_plot_variance_explained(save = False, threshold=0.9)
     # dataset.PCA_pairplot(exclude_pcs=[f"PC{i+1}" for i in range(4, 6)], kind="scatter", diag_kind="kde", save=True)
+    # dataset.PCA_pairplot(kind="scatter", diag_kind="kde", save=True)
     # dataset.PCA_plot_component_coeff(pcs=[0, 1, 2, 3], save = False)
 
     # Use plt.show to plot
-    plt.show()
+    # plt.show()
