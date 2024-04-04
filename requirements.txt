@@ -6,3 +6,5 @@ pandas
 matplotlib
 openpyxl
 scipy
+seaborn
+certifi
