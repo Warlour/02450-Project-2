@@ -19,6 +19,9 @@ from scipy.linalg import svd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Decision tree
+from sklearn import tree
+
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
         # Load dataset from uci
@@ -297,7 +300,7 @@ class Dataset:
 
         self.PCA_run = True
 
-    def PCA_plot_PCs(self,
+    def plot_PCA_PCs(self,
                      save: bool = True,
                      indices: Optional[tuple] = (0, 1)):
         '''
@@ -335,7 +338,7 @@ class Dataset:
             print(f"Saving {figname}...")
             f.savefig(figname)
 
-    def PCA_plot_variance_explained(self,
+    def plot_PCA_variance_explained(self,
                                     save: bool = True,
                                     threshold: float = 0.9):
         '''
@@ -365,7 +368,7 @@ class Dataset:
             print(f"Saving {figname}...")
             vp.savefig(figname)
 
-    def PCA_pairplot(self,
+    def plot_PCA_pairs(self,
                      exclude_pcs: Optional[list] = [],
                      kind: Literal['scatter', 'kde', 'hist', 'reg'] = "scatter",
                      diag_kind: Literal['auto', 'hist', 'kde'] = None,
@@ -399,7 +402,7 @@ class Dataset:
         if save:
             pairplot.savefig(f"pairplot_PCA{f'_excluded{len(exclude_pcs)}' if exclude_pcs else ''}.png")
 
-    def PCA_plot_component_coeff(self, pcs: Optional[list] = [], save: bool = True):
+    def plot_PCA_component_coeff(self, pcs: Optional[list] = [], save: bool = True):
         '''
         Plot the principal component coefficients.
 
@@ -430,28 +433,29 @@ class Dataset:
             print(f"Saving PCA_component_coefficients.png...")
             plt.savefig(f"PCA_component_coefficients.png")
 
+    def plot_decision_tree(self, criterion = "gini", save: bool = True):
+        dtc = tree.DecisionTreeClassifier(criterion=criterion, min_samples_split=1.0/self.N)
+        dtc = dtc.fit(self.X, self.y)
+
+        # Visualize the graph (you can also inspect the generated image file in an external program)
+        # NOTE: depending on your setup you may need to decrease or increase the figsize and DPI setting
+        # to get a readable plot. Hint: Try to maximize the figure after it displays.
+        fname = f"tree_uci_id_{self.uci_id}_" + criterion + ".png"
+
+        fig = plt.figure(figsize=(4, 4), dpi=100)
+        _ = tree.plot_tree(dtc, filled=True, feature_names=self.attributeNames)
+        if save:
+            plt.savefig(fname, dpi=1000)
+        # plt.show()
+
+
+
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    # dataset.plot_feature_compare(0, 1, save=False)
-    # dataset.plot_sns_feature("Area", 'kde', save=True)
-    # dataset.plot_features(features=["Area", "Perimeter", "Major_Axis_Length", "Minor_Axis_Length"], kind="scatter", diag_kind="kde", save=False)
-    dataset.plot_features(kind="scatter", diag_kind="kde", save=True)
-    # dataset.plot_boxplot(0, save=True)
-    # dataset.export_xlsx()
-
-    # dataset.PCA()
-    # print("\n Cum sum", np.cumsum(dataset.rho))
-    # print("\n Length of rho", len(dataset.rho))
-    # print("\n V", dataset.V)
-    # print("\n S", dataset.S)
-    # dataset.PCA_plot_PCs(save = False, indices=(0, 1))
-    # dataset.PCA_plot_variance_explained(save = False, threshold=0.9)
-    # dataset.PCA_pairplot(exclude_pcs=[f"PC{i+1}" for i in range(4, 6)], kind="scatter", diag_kind="kde", save=True)
-    # dataset.PCA_pairplot(kind="scatter", diag_kind="kde", save=True)
-    # dataset.PCA_plot_component_coeff(pcs=[0, 1, 2, 3], save = False)
+    dataset.plot_decision_tree()
 
     # Use plt.show to plot
     # plt.show()
