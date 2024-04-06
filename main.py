@@ -24,13 +24,58 @@ from sklearn import tree
 
 # Logistic Regression - Rasmus
 
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
 
+def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) -> None:
+    '''
+    param X: The feature matrix.
+    param y: The target vector.
+    param M: List of models to be evaluated.
+    param K1: Number of outer folds
+    param K2: Number of inner folds
+    '''
+
+    # Outer cross-validation loop
+    kf1 = KFold(n_splits=K1)
+
+    for train_idx_outer, test_idx_outer in kf1.split(X):
+        X_train_outer, X_test_outer = X[train_idx_outer], X[test_idx_outer]
+        y_train_outer, y_test_outer = y[train_idx_outer], y[test_idx_outer]
+
+        errors_inner = []
+
+        # Inner cross-validation loop for model selection
+        kf2 = KFold(n_splits=K2)
+
+        for model in M:
+            error_model_inner = []
+
+            for train_idx_inner, val_idx_inner in kf2.split(X_train_outer):
+                X_train_inner, X_val_inner = X_train_outer[train_idx_inner], X_train_outer[val_idx_inner]
+                y_train_inner, y_val_inner = y_train_outer[train_idx_inner], y_train_outer[val_idx_inner]
+
+                model.fit(X_train_inner, y_train_inner)
+                error_model_inner.append(model.score(X_val_inner, y_val_inner))
+            
+            errors_inner.append(np.mean(error_model_inner))
+
+        # Select optimal model with minimum validation error
+        optimal_model_idx = np.argmin(errors_inner)
+        optimal_model = M[optimal_model_idx]
+
+        # Train optimal model on entire training set
+        optimal_model.fit(X_train_outer, y_train_outer)
+
+        # Compute test error on test set
+        E_test = optimal_model.score(X_test_outer, y_test_outer)
+
+        print(f"Optimal model test error: {E_test:.4f}")
+        
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
@@ -458,7 +503,6 @@ class Dataset:
             plt.savefig(fname, dpi=1000)
         # plt.show()
 
-    #Work in progress
     def two_step_cross_validation(self, X, y, models: List[BaseEstimator], outer_K: int, inner_K: int) -> None:
         # Set up K-Fold cross-validation
         outer_cv = KFold(n_splits=outer_K, shuffle=True, random_state=42)
@@ -543,15 +587,6 @@ class Regression:
         self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
         self.X = self.X * (1 / np.std(self.X, 0))
 
-    
-    def ridges(self):
-        model = Ridge(alpha = 0.05)
-        Error_train[k] = np.square(epsilon).sum()/self.y.shape[0]
-        Error_test[k] = np.square(epsilon_test).sum()/self.y_test.shape[0]
-
-
-
-
     # m = lm.LinearRegression().fit(X_train, y_train)
     # Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
     # Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
@@ -570,18 +605,20 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
+    # logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
 
-    # Define your models
-    # models = [MLPClassifier(...), LogisticRegression(...), DummyClassifier(...)]
+    # # Define your models
+    # # models = [MLPClassifier(...), LogisticRegression(...), DummyClassifier(...)]
 
-    # Add the models to a list
-    models = [logistic_model]  # Replace ... with other models instances if you have any
+    # # Add the models to a list
+    # models = [logistic_model]  # Replace ... with other models instances if you have any
 
     # Perform the two-step cross-validation
     # dataset.two_step_cross_validation(models=models, K1=10, K2=10)
 
     #print(dataset.y)
+    regdata = Regression(dataset)
+    two_step_cross_validation(X=regdata.X, y=regdata.y, M=[Ridge(alpha=0.1), Ridge(alpha=1), Ridge(alpha=10)], K1=10, K2=10)
 
 
 
