@@ -22,6 +22,16 @@ import seaborn as sns
 # Decision tree
 from sklearn import tree
 
+# Logistic Regression - Rasmus
+
+from typing import Optional, List
+from sklearn.model_selection import KFold
+from sklearn.base import BaseEstimator
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import LabelEncoder
+
+
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
         # Load dataset from uci
@@ -450,12 +460,95 @@ class Dataset:
 
 
 
+
+    #Work in progress
+    def two_step_cross_validation(self, models: List[BaseEstimator], K1: int, K2: int) -> None:
+        # Set up K-Fold cross-validation
+        outer_cv = KFold(n_splits=K1, shuffle=True, random_state=42)
+        inner_cv = KFold(n_splits=K2, shuffle=True, random_state=42)
+
+        # Initialize results dictionary
+        results = {model.__class__.__name__: [] for model in models}
+        results['Outer fold'] = []
+
+        # Initialize LabelEncoder
+        label_encoder = LabelEncoder()
+
+        # Fit label encoder and return encoded labels
+        self.y = label_encoder.fit_transform(self.y.ravel())
+
+        # Start the outer cross-validation loop
+        for fold_idx, (train_idx, test_idx) in enumerate(outer_cv.split(self.X), start=1):
+            X_outer_train, X_outer_test = self.X[train_idx], self.X[test_idx]
+            y_outer_train, y_outer_test = self.y[train_idx], self.y[test_idx]
+
+            # Store best model for each outer fold
+            best_model_per_fold = None
+            best_model_score = -float('inf')
+
+            for model in models:
+                # List to store the inner cross-validation scores for the current model
+                inner_scores = []
+                
+                # Inner cross-validation loop
+                for inner_train_idx, inner_val_idx in inner_cv.split(X_outer_train):
+                    X_inner_train, X_inner_val = X_outer_train[inner_train_idx], X_outer_train[inner_val_idx]
+                    y_inner_train, y_inner_val = y_outer_train[inner_train_idx], y_outer_train[inner_val_idx]
+
+                    # Train the model on the inner train split and evaluate on the inner validation split
+                    model.fit(X_inner_train, y_inner_train)
+                    y_inner_pred = model.predict(X_inner_val)
+                    score = accuracy_score(y_inner_val, y_inner_pred)
+                    inner_scores.append(score)
+                    #print(inner_scores)
+
+                # Calculate the average inner score for the current model
+                avg_inner_score = np.mean(inner_scores)
+
+                # Check if this model is the best one so far and update best_model_per_fold
+                if avg_inner_score > best_model_score:
+                    best_model_score = avg_inner_score
+                    best_model_per_fold = model
+
+            # After the inner loop, retrain the best model on the entire outer train set
+            best_model_per_fold.fit(X_outer_train, y_outer_train)
+            y_outer_pred = best_model_per_fold.predict(X_outer_test)
+            outer_score = accuracy_score(y_outer_test, y_outer_pred)
+
+            # Append the results of the best model to the results dictionary
+            model_name = best_model_per_fold.__class__.__name__
+            results[model_name].append(outer_score)
+            results['Outer fold'].append(fold_idx)
+
+        # After cross-validation, print the results
+        for model_name, scores in results.items():
+            if model_name != 'Outer fold':
+                average_score = np.mean(scores)
+                print(f'Average score for {model_name}: {average_score:.4f}')
+            else:
+                print(f'Outer folds: {scores}')
+
+
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    dataset.plot_decision_tree()
+
+    logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
+
+    # Define your models
+    # models = [MLPClassifier(...), LogisticRegression(...), DummyClassifier(...)]
+
+    # Add the models to a list
+    models = [logistic_model]  # Replace ... with other models instances if you have any
+
+    # Perform the two-step cross-validation
+    dataset.two_step_cross_validation(models=models, K1=10, K2=10)
+
+    #print(dataset.y)
+
+
 
     # Use plt.show to plot
     # plt.show()
