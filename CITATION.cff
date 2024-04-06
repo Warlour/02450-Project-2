@@ -1,18 +1,22 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+title: >-
+  Predicting Rice Species Using Logistic and Artificial
+  Neural Network Models
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
 authors:
-  - family-names: Friis
-    given-names: Kristian
-    orcid: ""
-  - family-names: "Sørensen"
-  given-names: "Mathias"
-  orcid: ""
-  - family-names: "Linnemann"
-    given-names: "Rasmus"
-    orcid: ""
-title: "Logistic and Artificial Neural Network Models for Predicting Rice Species"
-version: 0
-identifiers:
-  - type: doi
-    value: 10.5281/zenodo.1234
-date-released: 2024-04-06
+  - given-names: Kristian
+    family-names: Friis
+  - given-names: Mathias
+    family-names: Sørensen
+  - given-names: Rasmus
+    family-names: Linnemann
+repository-code: 'https://github.com/Warlour/02450-Project-2'
+abstract: Classification and regression of dataset with Rice Species
+version: '0'
+date-released: '2024-04-06'
