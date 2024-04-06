@@ -28,7 +28,7 @@ from typing import Optional, List, Tuple
 from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator
 from sklearn.metrics import accuracy_score
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.preprocessing import LabelEncoder
 
 def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) -> None:
@@ -40,42 +40,40 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
     param K2: Number of inner folds
     '''
 
-    # Outer cross-validation loop
-    kf1 = KFold(n_splits=K1)
+    outer_cv = KFold(n_splits=K1, shuffle=True, random_state=42)
+    inner_cv = KFold(n_splits=K2, shuffle=True, random_state=42)
 
-    for train_idx_outer, test_idx_outer in kf1.split(X):
-        X_train_outer, X_test_outer = X[train_idx_outer], X[test_idx_outer]
-        y_train_outer, y_test_outer = y[train_idx_outer], y[test_idx_outer]
+    E_val_j = np.zeros((K2, len(M)))
 
-        errors_inner = []
 
-        # Inner cross-validation loop for model selection
-        kf2 = KFold(n_splits=K2)
+    for K1_i, (D_par_i, D_test_i) in enumerate(outer_cv.split(X), start=1):
+        E_gen_s = []
+        X_par_i, X_test_i = X[D_par_i], X[D_test_i]
+        y_par_i, y_test_i = y[D_par_i], y[D_test_i]
 
-        for model in M:
-            error_model_inner = []
+        for K2_j, (D_train_j, D_val_j) in enumerate(inner_cv.split(X_par_i), start=1):
+            X_train_j, X_val_j = X[D_train_j], X[D_val_j]
+            y_train_j, y_val_j = y[D_train_j], y[D_val_j]
 
-            for train_idx_inner, val_idx_inner in kf2.split(X_train_outer):
-                X_train_inner, X_val_inner = X_train_outer[train_idx_inner], X_train_outer[val_idx_inner]
-                y_train_inner, y_val_inner = y_train_outer[train_idx_inner], y_train_outer[val_idx_inner]
-
-                model.fit(X_train_inner, y_train_inner)
-                error_model_inner.append(model.score(X_val_inner, y_val_inner))
-            
-            errors_inner.append(np.mean(error_model_inner))
-
-        # Select optimal model with minimum validation error
-        optimal_model_idx = np.argmin(errors_inner)
-        optimal_model = M[optimal_model_idx]
-
-        # Train optimal model on entire training set
-        optimal_model.fit(X_train_outer, y_train_outer)
-
-        # Compute test error on test set
-        E_test = optimal_model.score(X_test_outer, y_test_outer)
-
-        print(f"Optimal model test error: {E_test:.4f}")
+            for s, model in enumerate(M, start=0):
+                model.fit(X_train_j, y_train_j)
+                E_val_j[K2_j-1, s] = np.square(y_val_j - model.predict(X_val_j)).sum() / y_val_j.shape[0]
         
+        for s in range(len(M)):
+            summ = 0
+            for j in range(1, K2+1):
+                summ += (len(D_val_j) / len(D_par_i)) * E_val_j[j-1, s]
+            E_gen_s.append(summ)
+        
+        optimal_model = M[np.argmin(E_gen_s)]
+        optimal_model.fit(X_par_i, y_par_i)
+
+        # Calculate test error on optimal model when tested on D_test_i
+        E_test_i = np.square(y_test_i - optimal_model.predict(X_test_i)).sum() / y_test_i.shape[0]
+
+    E_gen = sum(abs(D_test_i)/len(y_test_i) * E_test_i)
+    print(E_gen)
+    return E_gen
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
@@ -569,8 +567,6 @@ class Dataset:
             else:
                 print(f'Outer folds: {scores}')
 
-from sklearn.linear_model import Ridge
-
 class Regression:
     def __init__(self, dataset: Dataset):
         self.dataset = dataset
@@ -618,7 +614,13 @@ if __name__ == "__main__":
 
     #print(dataset.y)
     regdata = Regression(dataset)
-    two_step_cross_validation(X=regdata.X, y=regdata.y, M=[Ridge(alpha=0.1), Ridge(alpha=1), Ridge(alpha=10)], K1=10, K2=10)
+    two_step_cross_validation(
+        X=regdata.X, y=regdata.y, 
+        M=[Ridge(alpha=0.1), Ridge(alpha=0.2), Ridge(alpha=0.3), 
+        Ridge(alpha=0.4), Ridge(alpha=0.5), Ridge(alpha=0.6), 
+        Ridge(alpha=0.7), Ridge(alpha=0.8), Ridge(alpha=0.9), 
+        Ridge(alpha=1)], 
+        K1=10, K2=10)
 
 
 
