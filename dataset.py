@@ -45,7 +45,6 @@ class Dataset:
 
         self.X = np.array(self.X_dataframe)
         self.y = np.array(self.y_dataframe)
-        print(self.y)
 
         ### Headers ###
         self.attributeNames = list(self.datasetrepo.data.headers)
@@ -532,16 +531,16 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
+    # logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
 
     # Define your models
     # models = [MLPClassifier(...), LogisticRegression(...), DummyClassifier(...)]
 
     # Add the models to a list
-    models = [logistic_model]  # Replace ... with other models instances if you have any
+    # models = [logistic_model]  # Replace ... with other models instances if you have any
 
     # Perform the two-step cross-validation
-    dataset.two_step_cross_validation(models=models, K1=10, K2=10)
+    # dataset.two_step_cross_validation(models=models, K1=10, K2=10)
 
     #print(dataset.y)
 
