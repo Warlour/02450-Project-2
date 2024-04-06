@@ -46,6 +46,7 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
     E_val_j = np.zeros((K2, len(M)))
     E_test_i = []
 
+    optimal_idx = []
 
     for K1_i, (D_par_i, D_test_i) in enumerate(outer_cv.split(X), start=1):
         E_gen_s = []
@@ -66,13 +67,17 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
                 summ += (len(D_val_j) / len(D_par_i)) * E_val_j[j-1, s]
             E_gen_s.append(summ)
         
-        optimal_model = M[np.argmin(E_gen_s)]
+        oidx = np.argmin(E_gen_s)
+        optimal_idx.append(oidx)
+        optimal_model = M[oidx]
         optimal_model.fit(X_par_i, y_par_i)
 
         # Calculate test error on optimal model when tested on D_test_i
         E_test_i.append(np.square(y_test_i - optimal_model.predict(X_test_i)).sum() / y_test_i.shape[0])
 
     E_test_i = np.array(E_test_i)
+
+    print("Optimal Model indexes for each outer fold:", optimal_idx)
 
     E_gen = 0
     for i in range(K1):
