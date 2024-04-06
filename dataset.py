@@ -45,6 +45,7 @@ class Dataset:
 
         self.X = np.array(self.X_dataframe)
         self.y = np.array(self.y_dataframe)
+        print(self.y)
 
         ### Headers ###
         self.attributeNames = list(self.datasetrepo.data.headers)
@@ -458,9 +459,6 @@ class Dataset:
             plt.savefig(fname, dpi=1000)
         # plt.show()
 
-
-
-
     #Work in progress
     def two_step_cross_validation(self, models: List[BaseEstimator], K1: int, K2: int) -> None:
         # Set up K-Fold cross-validation
@@ -533,7 +531,6 @@ if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
-
 
     logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
 
