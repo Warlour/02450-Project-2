@@ -459,25 +459,25 @@ class Dataset:
         # plt.show()
 
     #Work in progress
-    def two_step_cross_validation(self, models: List[BaseEstimator], K1: int, K2: int) -> None:
+    def two_step_cross_validation(self, X, y, models: List[BaseEstimator], outer_K: int, inner_K: int) -> None:
         # Set up K-Fold cross-validation
-        outer_cv = KFold(n_splits=K1, shuffle=True, random_state=42)
-        inner_cv = KFold(n_splits=K2, shuffle=True, random_state=42)
+        outer_cv = KFold(n_splits=outer_K, shuffle=True, random_state=42)
+        inner_cv = KFold(n_splits=inner_K, shuffle=True, random_state=42)
 
         # Initialize results dictionary
         results = {model.__class__.__name__: [] for model in models}
         results['Outer fold'] = []
 
         # Initialize LabelEncoder
-        label_encoder = LabelEncoder()
+        # label_encoder = LabelEncoder()
 
         # Fit label encoder and return encoded labels
-        self.y = label_encoder.fit_transform(self.y.ravel())
+        # y = label_encoder.fit_transform(y.ravel())
 
         # Start the outer cross-validation loop
-        for fold_idx, (train_idx, test_idx) in enumerate(outer_cv.split(self.X), start=1):
-            X_outer_train, X_outer_test = self.X[train_idx], self.X[test_idx]
-            y_outer_train, y_outer_test = self.y[train_idx], self.y[test_idx]
+        for fold_idx, (train_idx, test_idx) in enumerate(outer_cv.split(X), start=1):
+            X_outer_train, X_outer_test = X[train_idx], X[test_idx]
+            y_outer_train, y_outer_test = y[train_idx], y[test_idx]
 
             # Store best model for each outer fold
             best_model_per_fold = None
@@ -525,19 +525,58 @@ class Dataset:
             else:
                 print(f'Outer folds: {scores}')
 
+from sklearn.linear_model import Ridge
+
+class Regression:
+    def __init__(self, dataset: Dataset):
+        self.dataset = dataset
+        self.X = dataset.X[:, 1:]
+        self.y = dataset.X[:, 0]
+
+        self.attributeNames = dataset.attributeNames
+        self.attributeNames.remove('Area')
+
+        self.N, self.M = self.X.shape
+        self.C = 2
+
+        # Feature transformations
+        self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
+        self.X = self.X * (1 / np.std(self.X, 0))
+
+    
+    def ridges(self):
+        model = Ridge(alpha = 0.05)
+        Error_train[k] = np.square(epsilon).sum()/self.y.shape[0]
+        Error_test[k] = np.square(epsilon_test).sum()/self.y_test.shape[0]
+
+
+
+
+    # m = lm.LinearRegression().fit(X_train, y_train)
+    # Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
+    # Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
+
+class Classification:
+    def __init__(self, dataset: Dataset):
+        self.dataset = dataset
+        self.X = dataset.X[:, 1:]
+        self.y = dataset.X[:, 0]
+
+        self.attributeNames = dataset.attributeNames
+        self.attributeNames.remove('Area')
 
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    # logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
+    logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
 
     # Define your models
     # models = [MLPClassifier(...), LogisticRegression(...), DummyClassifier(...)]
 
     # Add the models to a list
-    # models = [logistic_model]  # Replace ... with other models instances if you have any
+    models = [logistic_model]  # Replace ... with other models instances if you have any
 
     # Perform the two-step cross-validation
     # dataset.two_step_cross_validation(models=models, K1=10, K2=10)
