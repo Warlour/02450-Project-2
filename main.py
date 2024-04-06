@@ -72,13 +72,12 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
         # Calculate test error on optimal model when tested on D_test_i
         E_test_i.append(np.square(y_test_i - optimal_model.predict(X_test_i)).sum() / y_test_i.shape[0])
 
-        print(E_test_i)
     E_test_i = np.array(E_test_i)
 
     E_gen = 0
     for i in range(K1):
         E_gen += (len(D_test_i)/len(y)) * E_test_i[i]
-    print(E_gen)
+    print("E_gen:", E_gen)
     return E_gen
 
 class Dataset:
