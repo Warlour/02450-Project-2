@@ -44,6 +44,7 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
     inner_cv = KFold(n_splits=K2, shuffle=True, random_state=42)
 
     E_val_j = np.zeros((K2, len(M)))
+    E_test_i = []
 
 
     for K1_i, (D_par_i, D_test_i) in enumerate(outer_cv.split(X), start=1):
@@ -69,9 +70,14 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
         optimal_model.fit(X_par_i, y_par_i)
 
         # Calculate test error on optimal model when tested on D_test_i
-        E_test_i = np.square(y_test_i - optimal_model.predict(X_test_i)).sum() / y_test_i.shape[0]
+        E_test_i.append(np.square(y_test_i - optimal_model.predict(X_test_i)).sum() / y_test_i.shape[0])
 
-    E_gen = sum(abs(D_test_i)/len(y_test_i) * E_test_i)
+        print(E_test_i)
+    E_test_i = np.array(E_test_i)
+
+    E_gen = 0
+    for i in range(K1):
+        E_gen += (len(D_test_i)/len(y)) * E_test_i[i]
     print(E_gen)
     return E_gen
 
