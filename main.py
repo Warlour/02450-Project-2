@@ -89,7 +89,7 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
 
         omidx = np.argmin(E_gen_s[5:10])+5
         optimal_mlpreg = M[omidx]
-        output_dict["optimal_lambdas"].append(inputs[omidx])
+        output_dict["optimal_hidden_layers"].append(inputs[omidx])
         print(optimal_mlpreg)
 
         obidx = np.argmin(E_gen_s[10:15])+10
@@ -662,7 +662,6 @@ if __name__ == "__main__":
 
     #print(dataset.y)
 
-    global model_amounts
     model_amounts = 5
     global inputs
     inputs = []
@@ -672,12 +671,14 @@ if __name__ == "__main__":
     M = [Ridge(alpha=alpha) for alpha in alphas]
     inputs += alphas.tolist()
 
-    hidden_layer_sizes = [(i, i) for i in range(1, model_amounts + 1)]
-    print(hidden_layer_sizes)
-    M += [MLPRegressor(hidden_layer_sizes=h, max_iter=100) for h in hidden_layer_sizes]
+    hidden_layer_sizes = [(i,) for i in range(1, model_amounts + 1)]
+    M += [MLPRegressor(hidden_layer_sizes=h, max_iter=20000) for h in hidden_layer_sizes]
     inputs += hidden_layer_sizes
 
     M += [DummyRegressor(strategy="mean") for _ in range(model_amounts)]
+
+    print("Alphas:", alphas, sep="\n")
+    print("Hidden layer sizes:", hidden_layer_sizes, sep="\n")
 
     regdata = Regression(dataset)
 
