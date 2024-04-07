@@ -83,16 +83,7 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, cl
                 else:
                     E_val_j[K2_j-1, s] = np.square(y_val_j - model.predict(X_val_j)).sum() / y_val_j.shape[0]
 
-        
-        # for s, m in enumerate(M):
-        #     summ = 0
-        #     for j in range(K2):
-        #         summ += (len(D_val_j) / len(D_par_i)) * E_val_j[j, s]
-
-        #         if m.__class__.__name__ == "DummyClassifier":
-        #             print("Weight:", len(D_val_j) / len(D_par_i))
-        #             print(E_val_j[j, s])
-        #     E_gen_s.append(summ)
+        # Calculate E_gen_s for each model
         for s in range(len(M)):
             summ = sum((len(D_val_j) / len(D_par_i)) * E_val_j[j, s] for j in range(K2))
             E_gen_s.append(summ)
@@ -112,19 +103,25 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, cl
         optimal_model3 = M[obidx]
         print(optimal_model3)
 
-
         # Calculate test error on optimal model when tested on D_test_i
-        E_test_i_model1 = np.append(E_test_i_model1, np.square(y_test_i - optimal_model1.predict(X_test_i)).sum() / y_test_i.shape[0])
-        print(f"E_test_{optimal_model1.__class__.__name__}_{K1_i}:", E_test_i_model1[K1_i-1])
-
-        E_test_i_model2 = np.append(E_test_i_model2, np.square(y_test_i - optimal_model2.predict(X_test_i)).sum() / y_test_i.shape[0])
-        print(f"E_test_{optimal_model2.__class__.__name__}_{K1_i}:", E_test_i_model2[K1_i-1])
+        if classify:
+            E_test_i_model1 = np.append(E_test_i_model1, sum([a != b for a, b in zip(y_test_i, optimal_model1.predict(X_test_i))]) / len(y_test_i))
+            E_test_i_model2 = np.append(E_test_i_model2, sum([a != b for a, b in zip(y_test_i, optimal_model2.predict(X_test_i))]) / len(y_test_i))
+            E_test_i_model3 = np.append(E_test_i_model3, sum([a != b for a, b in zip(y_test_i, optimal_model3.predict(X_test_i))]) / len(y_test_i))
+        else:
+            E_test_i_model1 = np.append(E_test_i_model1, np.square(y_test_i - optimal_model1.predict(X_test_i)).sum() / y_test_i.shape[0])
+            E_test_i_model2 = np.append(E_test_i_model2, np.square(y_test_i - optimal_model2.predict(X_test_i)).sum() / y_test_i.shape[0])
+            E_test_i_model3 = np.append(E_test_i_model3, np.square(y_test_i - optimal_model3.predict(X_test_i)).sum() / y_test_i.shape[0])
         
-        E_test_i_model3 = np.append(E_test_i_model3, np.square(y_test_i - optimal_model3.predict(X_test_i)).sum() / y_test_i.shape[0])
+
+        print(f"E_test_{optimal_model1.__class__.__name__}_{K1_i}:", E_test_i_model1[K1_i-1])
+        print(f"E_test_{optimal_model2.__class__.__name__}_{K1_i}:", E_test_i_model2[K1_i-1])
         print(f"E_test_{optimal_model3.__class__.__name__}_{K1_i}:", E_test_i_model3[K1_i-1])
 
         print()
 
+
+    print("Outer fold ended.")
 
     E_gen_model1 = sum((len(D_test_i)/len(y)) * E_test_i_model1[i] for i in range(K1))
     E_gen_model2 = sum((len(D_test_i)/len(y)) * E_test_i_model2[i] for i in range(K1))
@@ -651,7 +648,7 @@ class Regression:
         self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
         self.X = self.X * (1 / np.std(self.X, 0))
     
-    def two_step(self):
+    def two_step(self, max_iter: int = 20000):
         model_amounts = 5
         global inputs
         inputs = []
@@ -662,7 +659,7 @@ class Regression:
         inputs += alphas.tolist()
 
         hidden_layer_sizes = [(i,) for i in range(1, model_amounts + 1)]
-        M += [MLPRegressor(hidden_layer_sizes=h, max_iter=20000) for h in hidden_layer_sizes]
+        M += [MLPRegressor(hidden_layer_sizes=h, max_iter=max_iter) for h in hidden_layer_sizes]
         inputs += hidden_layer_sizes
 
         M += [DummyRegressor(strategy="mean") for _ in range(model_amounts)]
@@ -670,11 +667,9 @@ class Regression:
         print("Alphas:", alphas, sep="\n")
         print("Hidden layer sizes:", hidden_layer_sizes, sep="\n")
 
-        data = Regression(dataset)
-
         with open("regdata.txt", "w") as f:
             d = two_step_cross_validation(
-                X=data.X, y=data.y, 
+                X=self.X, y=self.y, 
                 M=M,
                 K1=5, K2=5)
             
@@ -701,7 +696,7 @@ class Classification:
         self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
         self.X = self.X * (1 / np.std(self.X, 0))
     
-    def two_step(self):
+    def two_step(self, max_iter: int = 20000):
         model_amounts = 5
         global inputs
         inputs = []
@@ -711,7 +706,7 @@ class Classification:
         inputs += C
 
         hidden_layer_sizes = [(i,) for i in range(1, model_amounts + 1)]
-        M += [MLPClassifier(hidden_layer_sizes=h, max_iter=1) for h in hidden_layer_sizes]
+        M += [MLPClassifier(hidden_layer_sizes=h, max_iter=max_iter) for h in hidden_layer_sizes]
         inputs += hidden_layer_sizes
 
         M += [DummyClassifier(strategy="most_frequent") for _ in range(model_amounts)]
@@ -749,9 +744,9 @@ if __name__ == "__main__":
 
     #print(dataset.y)
 
-    data = Regression(dataset)
-    # data = Classification(dataset)
-    data.two_step()
+    # data = Regression(dataset)
+    data = Classification(dataset)
+    data.two_step(max_iter=1)
 
     
 
