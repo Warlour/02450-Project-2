@@ -29,7 +29,13 @@ from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.preprocessing import LabelEncoder
+
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) -> None:
     '''
@@ -39,14 +45,17 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
     param K1: Number of outer folds
     param K2: Number of inner folds
     '''
+    output_dict = {}
 
-    outer_cv = KFold(n_splits=K1, shuffle=True, random_state=42)
-    inner_cv = KFold(n_splits=K2, shuffle=True, random_state=42)
+    outer_cv = KFold(n_splits=K1, shuffle=True)
+    inner_cv = KFold(n_splits=K2, shuffle=True)
 
     E_val_j = np.zeros((K2, len(M)))
-    E_test_i = []
 
-    optimal_idx = []
+
+    E_test_i_ridge = np.array([])
+    E_test_i_mlpreg = np.array([])
+    E_test_i_baseline = np.array([])
 
     for K1_i, (D_par_i, D_test_i) in enumerate(outer_cv.split(X), start=1):
         E_gen_s = []
@@ -63,27 +72,37 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
         
         for s in range(len(M)):
             summ = 0
-            for j in range(1, K2+1):
-                summ += (len(D_val_j) / len(D_par_i)) * E_val_j[j-1, s]
+            for j in range(K2):
+                summ += (len(D_val_j) / len(D_par_i)) * E_val_j[j, s]
             E_gen_s.append(summ)
-        
-        oidx = np.argmin(E_gen_s)
-        optimal_idx.append(oidx)
-        optimal_model = M[oidx]
-        optimal_model.fit(X_par_i, y_par_i)
+
+        optimal_ridge = M[np.argmin(E_gen_s[0:10])]
+        print(optimal_ridge)
+        optimal_mlpreg = M[np.argmin(E_gen_s[10:20])+10]
+        print(optimal_mlpreg)
+        # optimal_baseline = M[np.argmin(E_gen_s[20:30])]
+
 
         # Calculate test error on optimal model when tested on D_test_i
-        E_test_i.append(np.square(y_test_i - optimal_model.predict(X_test_i)).sum() / y_test_i.shape[0])
+        E_test_i_ridge = np.append(E_test_i_ridge, np.square(y_test_i - optimal_ridge.predict(X_test_i)).sum() / y_test_i.shape[0])
+        E_test_i_mlpreg = np.append(E_test_i_mlpreg, np.square(y_test_i - optimal_mlpreg.predict(X_test_i)).sum() / y_test_i.shape[0])
+        # E_test_i_baseline = np.append(E_test_i_baseline, np.square(y_test_i - optimal_baseline.predict(X_test_i)).sum() / y_test_i.shape[0])
+        
+        
+        print(f"E_test_ridge_{K1_i}:", E_test_i_ridge[K1_i-1])
+        print(f"E_test_mlpreg_{K1_i}:", E_test_i_mlpreg[K1_i-1])
+        # print(f"E_test_baseline_{K1_i}:", E_test_i_baseline[K1_i-1])
+        print()
 
-    E_test_i = np.array(E_test_i)
 
-    print("Optimal Model indexes for each outer fold:", optimal_idx)
-
-    E_gen = 0
-    for i in range(K1):
-        E_gen += (len(D_test_i)/len(y)) * E_test_i[i]
-    print("E_gen:", E_gen)
-    return E_gen
+    E_gen_ridges = sum((len(D_test_i)/len(y)) * E_test_i_ridge[i] for i in range(K1))
+    E_gen_mlpregs = sum((len(D_test_i)/len(y)) * E_test_i_mlpreg[i] for i in range(K1))
+    # E_gen_baselines = sum((len(D_test_i)/len(y)) * E_test_i_baseline[i] for i in range(K1))
+    print("E_gen_ridges:", E_gen_ridges)
+    print("E_gen_mlpregs:", E_gen_mlpregs)
+    # print("E_gen_baselines:", E_gen_baselines)
+    
+    return output_dict
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
@@ -593,10 +612,6 @@ class Regression:
         self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
         self.X = self.X * (1 / np.std(self.X, 0))
 
-    # m = lm.LinearRegression().fit(X_train, y_train)
-    # Error_train[k] = np.square(y_train-m.predict(X_train)).sum()/y_train.shape[0]
-    # Error_test[k] = np.square(y_test-m.predict(X_test)).sum()/y_test.shape[0]
-
 class Classification:
     def __init__(self, dataset: Dataset):
         self.dataset = dataset
@@ -623,14 +638,30 @@ if __name__ == "__main__":
     # dataset.two_step_cross_validation(models=models, K1=10, K2=10)
 
     #print(dataset.y)
+    # global alphas
+
+    alphas = np.power(10.0, range(-5, 5))
+    # print(alphas)
+    M = [Ridge(alpha=alpha) for alpha in alphas]
+
+    hidden_layer_sizes = np.arange(1, 10)
+    M += [MLPRegressor(hidden_layer_sizes=h, max_iter=10000) for h in hidden_layer_sizes]
+
+    # for m in M:
+    #     print(m.__class__.__name__)
+
     regdata = Regression(dataset)
-    two_step_cross_validation(
-        X=regdata.X, y=regdata.y, 
-        M=[Ridge(alpha=0.1), Ridge(alpha=0.2), Ridge(alpha=0.3), 
-        Ridge(alpha=0.4), Ridge(alpha=0.5), Ridge(alpha=0.6), 
-        Ridge(alpha=0.7), Ridge(alpha=0.8), Ridge(alpha=0.9), 
-        Ridge(alpha=1)], 
-        K1=10, K2=10)
+
+    with open("regdata.txt", "w") as f:
+        d = two_step_cross_validation(
+            X=regdata.X, y=regdata.y, 
+            M=M, 
+            K1=10, K2=10)
+        
+        for key, value in d.items():
+            f.write(f"{key}: {value}\n")
+        
+        f.write("\n\n")
 
 
 
