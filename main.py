@@ -30,6 +30,7 @@ from sklearn.base import BaseEstimator
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.neural_network import MLPRegressor, MLPClassifier
+from sklearn.dummy import DummyClassifier, DummyRegressor
 from sklearn.preprocessing import LabelEncoder
 
 import warnings
@@ -45,7 +46,12 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
     param K1: Number of outer folds
     param K2: Number of inner folds
     '''
+    global inputs
+
+    print("Running two-step cross-validation...")
     output_dict = {}
+    output_dict["optimal_lambdas"] = []
+    output_dict["optimal_hidden_layers"] = []
 
     outer_cv = KFold(n_splits=K1, shuffle=True)
     inner_cv = KFold(n_splits=K2, shuffle=True)
@@ -76,31 +82,48 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int) ->
                 summ += (len(D_val_j) / len(D_par_i)) * E_val_j[j, s]
             E_gen_s.append(summ)
 
-        optimal_ridge = M[np.argmin(E_gen_s[0:10])]
+        oridx = np.argmin(E_gen_s[0:5])
+        optimal_ridge = M[oridx]
+        output_dict["optimal_lambdas"].append(inputs[oridx])
         print(optimal_ridge)
-        optimal_mlpreg = M[np.argmin(E_gen_s[10:20])+10]
+
+        omidx = np.argmin(E_gen_s[5:10])+5
+        optimal_mlpreg = M[omidx]
+        output_dict["optimal_lambdas"].append(inputs[omidx])
         print(optimal_mlpreg)
-        # optimal_baseline = M[np.argmin(E_gen_s[20:30])]
+
+        obidx = np.argmin(E_gen_s[10:15])+10
+        optimal_baseline = M[obidx]
+        print(optimal_baseline)
 
 
         # Calculate test error on optimal model when tested on D_test_i
         E_test_i_ridge = np.append(E_test_i_ridge, np.square(y_test_i - optimal_ridge.predict(X_test_i)).sum() / y_test_i.shape[0])
-        E_test_i_mlpreg = np.append(E_test_i_mlpreg, np.square(y_test_i - optimal_mlpreg.predict(X_test_i)).sum() / y_test_i.shape[0])
-        # E_test_i_baseline = np.append(E_test_i_baseline, np.square(y_test_i - optimal_baseline.predict(X_test_i)).sum() / y_test_i.shape[0])
-        
-        
         print(f"E_test_ridge_{K1_i}:", E_test_i_ridge[K1_i-1])
+
+        E_test_i_mlpreg = np.append(E_test_i_mlpreg, np.square(y_test_i - optimal_mlpreg.predict(X_test_i)).sum() / y_test_i.shape[0])
         print(f"E_test_mlpreg_{K1_i}:", E_test_i_mlpreg[K1_i-1])
-        # print(f"E_test_baseline_{K1_i}:", E_test_i_baseline[K1_i-1])
+        
+        E_test_i_baseline = np.append(E_test_i_baseline, np.square(y_test_i - optimal_baseline.predict(X_test_i)).sum() / y_test_i.shape[0])
+        print(f"E_test_baseline_{K1_i}:", E_test_i_baseline[K1_i-1])
+
         print()
 
 
     E_gen_ridges = sum((len(D_test_i)/len(y)) * E_test_i_ridge[i] for i in range(K1))
     E_gen_mlpregs = sum((len(D_test_i)/len(y)) * E_test_i_mlpreg[i] for i in range(K1))
-    # E_gen_baselines = sum((len(D_test_i)/len(y)) * E_test_i_baseline[i] for i in range(K1))
-    print("E_gen_ridges:", E_gen_ridges)
-    print("E_gen_mlpregs:", E_gen_mlpregs)
-    # print("E_gen_baselines:", E_gen_baselines)
+    E_gen_baselines = sum((len(D_test_i)/len(y)) * E_test_i_baseline[i] for i in range(K1))
+    print("E_gen_ridge:", E_gen_ridges)
+    print("E_gen_mlpreg:", E_gen_mlpregs)
+    print("E_gen_baseline:", E_gen_baselines)
+
+    output_dict["E_test_ridges"] = E_test_i_ridge
+    output_dict["E_test_mlpregs"] = E_test_i_mlpreg
+    output_dict["E_test_baselines"] = E_test_i_baseline
+
+    output_dict["E_gen_ridge"] = E_gen_ridges
+    output_dict["E_gen_mlpreg"] = E_gen_mlpregs
+    output_dict["E_gen_baseline"] = E_gen_baselines
     
     return output_dict
 
@@ -638,17 +661,23 @@ if __name__ == "__main__":
     # dataset.two_step_cross_validation(models=models, K1=10, K2=10)
 
     #print(dataset.y)
-    # global alphas
 
-    alphas = np.power(10.0, range(-5, 5))
-    # print(alphas)
+    global model_amounts
+    model_amounts = 5
+    global inputs
+    inputs = []
+
+    astart = -3
+    alphas = np.power(10.0, range(astart, astart+model_amounts))
     M = [Ridge(alpha=alpha) for alpha in alphas]
+    inputs += alphas.tolist()
 
-    hidden_layer_sizes = np.arange(1, 10)
-    M += [MLPRegressor(hidden_layer_sizes=h, max_iter=10000) for h in hidden_layer_sizes]
+    hidden_layer_sizes = [(i, i) for i in range(1, model_amounts + 1)]
+    print(hidden_layer_sizes)
+    M += [MLPRegressor(hidden_layer_sizes=h, max_iter=100) for h in hidden_layer_sizes]
+    inputs += hidden_layer_sizes
 
-    # for m in M:
-    #     print(m.__class__.__name__)
+    M += [DummyRegressor(strategy="mean") for _ in range(model_amounts)]
 
     regdata = Regression(dataset)
 
@@ -656,14 +685,10 @@ if __name__ == "__main__":
         d = two_step_cross_validation(
             X=regdata.X, y=regdata.y, 
             M=M, 
-            K1=10, K2=10)
+            K1=5, K2=5)
         
         for key, value in d.items():
             f.write(f"{key}: {value}\n")
         
         f.write("\n\n")
 
-
-
-    # Use plt.show to plot
-    # plt.show()
