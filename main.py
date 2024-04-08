@@ -35,13 +35,30 @@ from sklearn.preprocessing import LabelEncoder
 
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+import scipy.stats as st
+import itertools
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 def namestr(obj):
     return [name for name in globals() if globals()[name] is obj][0]
 
-def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, classify: bool = False) -> None:
+def compare_regression_models(y_true, y_pred_model1, y_pred_model2, alpha=0.05):
+    n = len(y_true)
+    # Compute differences in loss
+    z = np.abs(y_true - y_pred_model1) ** 2 - np.abs(y_true - y_pred_model2) ** 2
+    # Compute mean of differences
+    z_hat = np.mean(z)
+    # Compute standard deviation of differences
+    z_tilde_sigma_sq = np.sum((z - z_hat) ** 2) / (n * (n - 1))
+    z_tilde_sigma = np.sqrt(z_tilde_sigma_sq)
+    # Compute confidence interval
+    z_L, z_U = st.t.interval(1 - alpha, df=n - 1, loc=z_hat, scale=z_tilde_sigma)
+    # Compute p-value
+    p = 2 * st.t.cdf(-np.abs(z_hat) / z_tilde_sigma, df=n - 1)
+    return z_L, z_U, p
+
+def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, model_amounts: int, classify: bool = False) -> None:
     '''
     param X: The feature matrix.
     param y: The target vector.
@@ -88,23 +105,39 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, cl
             summ = sum((len(D_val_j) / len(D_par_i)) * E_val_j[j, s] for j in range(K2))
             E_gen_s.append(summ)
 
+        
 
-        oridx = np.argmin(E_gen_s[0:5])
+
+        oridx = np.argmin(E_gen_s[0:model_amounts])
         optimal_model1 = M[oridx]
         output_dict["optimal_lambdas"].append(inputs[oridx])
         print(optimal_model1)
 
-        omidx = np.argmin(E_gen_s[5:10])+5
+        omidx = np.argmin(E_gen_s[model_amounts:2*model_amounts])+model_amounts
         optimal_model2 = M[omidx]
         output_dict["optimal_hidden_layers"].append(inputs[omidx])
         print(optimal_model2)
 
-        obidx = np.argmin(E_gen_s[10:15])+10
+        obidx = np.argmin(E_gen_s[2*model_amounts:3*model_amounts])+2*model_amounts
         optimal_model3 = M[obidx]
         print(optimal_model3)
 
-        # Calculate test error on optimal model when tested on D_test_i
+
         if classify:
+            for model_combo in itertools.combinations([optimal_model1, optimal_model2, optimal_model3], 2):
+                model1, model2 = model_combo
+                model1_name = model1.__class__.__name__
+                model2_name = model2.__class__.__name__
+                y_pred_model1 = model1.predict(X_test_i)
+                y_pred_model2 = model2.predict(X_test_i)
+                z_L, z_U, p = compare_regression_models(y_test_i, y_pred_model1, y_pred_model2)
+                print(f"Comparing {model1_name} and {model2_name}:")
+                print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
+                print(f"p-value: {p:.4f}")
+
+                output_dict[f"{model1_name}_{model2_name}: [zL, zU, p-value]"] = [z_L, z_U, p]
+
+            # Calculate test error on optimal model when tested on D_test_i
             E_test_i_model1 = np.append(E_test_i_model1, sum([a != b for a, b in zip(y_test_i, optimal_model1.predict(X_test_i))]) / len(y_test_i))
             E_test_i_model2 = np.append(E_test_i_model2, sum([a != b for a, b in zip(y_test_i, optimal_model2.predict(X_test_i))]) / len(y_test_i))
             E_test_i_model3 = np.append(E_test_i_model3, sum([a != b for a, b in zip(y_test_i, optimal_model3.predict(X_test_i))]) / len(y_test_i))
@@ -112,7 +145,7 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, cl
             E_test_i_model1 = np.append(E_test_i_model1, np.square(y_test_i - optimal_model1.predict(X_test_i)).sum() / y_test_i.shape[0])
             E_test_i_model2 = np.append(E_test_i_model2, np.square(y_test_i - optimal_model2.predict(X_test_i)).sum() / y_test_i.shape[0])
             E_test_i_model3 = np.append(E_test_i_model3, np.square(y_test_i - optimal_model3.predict(X_test_i)).sum() / y_test_i.shape[0])
-        
+
 
         print(f"E_test_{optimal_model1.__class__.__name__}_{K1_i}:", E_test_i_model1[K1_i-1])
         print(f"E_test_{optimal_model2.__class__.__name__}_{K1_i}:", E_test_i_model2[K1_i-1])
@@ -130,13 +163,13 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, cl
     print(f"E_gen_{optimal_model2.__class__.__name__}:", E_gen_model2)
     print(f"E_gen_{optimal_model3.__class__.__name__}:", E_gen_model3)
 
-    output_dict[f"E_test_{optimal_model1.__class__.__name__}"] = E_test_i_model1
-    output_dict[f"E_test_{optimal_model2.__class__.__name__}"] = E_test_i_model2
-    output_dict[f"E_test_{optimal_model3.__class__.__name__}"] = E_test_i_model3
+    output_dict[f"E_test_{optimal_model1.__class__.__name__}"] = np.round(E_test_i_model1, decimals=3)
+    output_dict[f"E_test_{optimal_model2.__class__.__name__}"] = np.round(E_test_i_model2, decimals=3)
+    output_dict[f"E_test_{optimal_model3.__class__.__name__}"] = np.round(E_test_i_model3, decimals=3)
 
-    output_dict[f"E_gen_{optimal_model1.__class__.__name__}"] = E_gen_model1
-    output_dict[f"E_gen_{optimal_model2.__class__.__name__}"] = E_gen_model2
-    output_dict[f"E_gen_{optimal_model3.__class__.__name__}"] = E_gen_model3
+    output_dict[f"E_gen_{optimal_model1.__class__.__name__}"] = np.round(E_gen_model1, decimals=3)
+    output_dict[f"E_gen_{optimal_model2.__class__.__name__}"] = np.round(E_gen_model2, decimals=3)
+    output_dict[f"E_gen_{optimal_model3.__class__.__name__}"] = np.round(E_gen_model3, decimals=3)
     
     return output_dict
 
@@ -648,8 +681,8 @@ class Regression:
         self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
         self.X = self.X * (1 / np.std(self.X, 0))
     
-    def two_step(self, max_iter: int = 20000):
-        model_amounts = 5
+    def two_step(self, max_iter: int = 20000, K: int = 10):
+        model_amounts = K
         global inputs
         inputs = []
 
@@ -671,7 +704,8 @@ class Regression:
             d = two_step_cross_validation(
                 X=self.X, y=self.y, 
                 M=M,
-                K1=5, K2=5)
+                K1=K, K2=K,
+                model_amounts = model_amounts)
             
             for key, value in d.items():
                 f.write(f"{key}: {value}\n")
@@ -696,14 +730,15 @@ class Classification:
         self.X = self.X - np.ones((self.N, 1)) * self.X.mean(axis=0)
         self.X = self.X * (1 / np.std(self.X, 0))
     
-    def two_step(self, max_iter: int = 20000):
-        model_amounts = 5
+    def two_step(self, max_iter: int = 20000, K: int = 10):
+        model_amounts = K
         global inputs
         inputs = []
 
-        C = [0.00001, 0.0001, 0.001, 0.01, 0.1]
+        astart = -5
+        C = np.power(10.0, range(astart, astart+model_amounts))
         M = [LogisticRegression(C=c, penalty='l2') for c in C]
-        inputs += C
+        inputs += C.tolist()
 
         hidden_layer_sizes = [(i,) for i in range(1, model_amounts + 1)]
         M += [MLPClassifier(hidden_layer_sizes=h, max_iter=max_iter) for h in hidden_layer_sizes]
@@ -719,11 +754,12 @@ class Classification:
                 X=self.X, y=self.y, 
                 M=M,
                 classify=True,
-                K1=5, K2=5)
+                K1=K, K2=K,
+                model_amounts = model_amounts)
             
             for key, value in d.items():
                 f.write(f"{key}: {value}\n")
-            
+
             f.write("\n\n")
 
 if __name__ == "__main__":
@@ -746,7 +782,7 @@ if __name__ == "__main__":
 
     # data = Regression(dataset)
     data = Classification(dataset)
-    data.two_step(max_iter=1)
+    data.two_step(max_iter=10, K=10)
 
-    
+
 
