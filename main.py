@@ -922,11 +922,11 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    # data = Regression(dataset)
-    data = Classification(dataset)
+    data = Regression(dataset)
+    # data = Classification(dataset)
     # data.two_step(max_iter=20000, K=10)
 
-    # data.compare_models([Ridge(alpha=0.01), MLPRegressor(hidden_layer_sizes=9, max_iter=20000), DummyRegressor(strategy="mean")])
-    data.compare_models([LogisticRegression(C=10, penalty='l2'), MLPClassifier(hidden_layer_sizes=1, max_iter=20000), DummyClassifier(strategy="most_frequent")])
+    data.compare_models([Ridge(alpha=1e-3), MLPRegressor(hidden_layer_sizes=9, max_iter=20000), DummyRegressor(strategy="mean")])
+    # data.compare_models([LogisticRegression(C=10, penalty='l2'), MLPClassifier(hidden_layer_sizes=1, max_iter=20000), DummyClassifier(strategy="most_frequent")])
 
 
