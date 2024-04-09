@@ -43,7 +43,7 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 def namestr(obj):
     return [name for name in globals() if globals()[name] is obj][0]
 
-def compare_regression_models(y_true, yhatA, yhatB, alpha=0.05):
+def compare_regression_models(y_true, yhatA, yhatB, alpha: float = 0.05):
     n = len(y_true)
     nu = n-1
 
@@ -70,6 +70,56 @@ def compare_regression_models(y_true, yhatA, yhatB, alpha=0.05):
 
     return z_L, z_U, p
 
+
+def compare_classification_models(yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
+    n = len(yhatA)
+    n12 = np.sum((yhatA == 1) & (yhatB == 0))  # A is correct, B is incorrect
+    n21 = np.sum((yhatA == 0) & (yhatB == 1))  # B is correct, A is incorrect
+
+    theta_hat = (n12 - n21) / n
+
+    if n12 + n21 < 5:
+        print(f"This interval: (n_12: {n12}, n_21: {n21}) is not useful.")
+        return None, None, None
+    
+    # Computing parameters for confidence interval
+    E_theta = (n12 - n21) / n
+    Q = (n**2 * (n + 1) * (E_theta + 1) * (1 - E_theta)) / (n * (n12 + n21) - (n12 - n21)**2)
+    f = ((E_theta + 1) / 2) * (Q - 1)
+    g = ((1 - E_theta) / 2) * (Q - 1)
+
+    # Confidence interval computation
+    theta_L = 2 * np.percentile(np.random.beta((theta_hat + 1) / 2, (1 - theta_hat) / 2, size=10000), alpha / 2) - 1
+    theta_U = 2 * np.percentile(np.random.beta((theta_hat + 1) / 2, (1 - theta_hat) / 2, size=10000), 100 - alpha / 2) - 1
+
+    # Compute p-value
+    m = min(n12, n21)
+    p = 2 * (1 - np.sum(np.random.binomial(n=n12 + n21, p=0.5, size=10000) <= m) / 10000)
+
+    return theta_L, theta_U, p
+    
+    
+    
+    
+    # cA = np.array([int(a == b) for a, b in zip(yhatA, y_true)])
+    # cB = np.array([int(a == b) for a, b in zip(yhatB, y_true)])
+    # n = np.array([
+    #     [np.sum(cA*cB), np.sum(cA*(1-cB))], 
+    #     [np.sum((1-cA)*cB), np.sum((1-cA)*(1-cB))]
+    # ])
+
+    # # Estimate performance difference
+    # # Estimated difference in accuracy of model A and B
+    # theta_hat = (n[1-1, 2-1] - n[2-1, 1-1])/n
+
+    # # Approximate 1-alpha confidence interval for theta
+    # E_theta = theta_hat
+    # Q = (n**2*(n+1)*(E_theta+1)(1-E_theta))/(n*(n[1-1, 2-1] + n[2-1, 1-1]) - (n[1-1, 2-1]-n[2-1, 1-1])**2)
+    # f = (E_theta+1)/2 * (Q-1)
+    # g = (1-E_theta)/2 * (Q-1)
+    # theta_L = 2*st.t.ppf(f/2, ) - 1
+
+
 def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, model_amounts: int, classify: bool = False) -> None:
     '''
     param X: The feature matrix.
@@ -94,6 +144,10 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
     E_test_i_model1 = np.array([])
     E_test_i_model2 = np.array([])
     E_test_i_model3 = np.array([])
+
+    best_model1 = None
+    best_model2 = None
+    best_model3 = None
 
     for K1_i, (D_par_i, D_test_i) in enumerate(outer_cv.split(X), start=1):
         print("----------------------")
@@ -136,19 +190,6 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
 
 
         if classify:
-            for model_combo in itertools.combinations([optimal_model1, optimal_model2, optimal_model3], 2):
-                model1, model2 = model_combo
-                model1_name = model1.__class__.__name__
-                model2_name = model2.__class__.__name__
-                yhatA = model1.predict(X_test_i)
-                yhatB = model2.predict(X_test_i)
-                z_L, z_U, p = compare_regression_models(y_test_i, yhatA, yhatB)
-                print(f"Comparing {model1_name} and {model2_name}:")
-                print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
-                print(f"p-value: {p:.4f}")
-
-                output_dict[f"{model1_name}_{model2_name}: [zL, zU], p-value"] = {'conf': [z_L, z_U], 'p': p}
-
             # Calculate test error on optimal model when tested on D_test_i
             E_test_i_model1 = np.append(E_test_i_model1, sum([a != b for a, b in zip(y_test_i, optimal_model1.predict(X_test_i))]) / len(y_test_i))
             E_test_i_model2 = np.append(E_test_i_model2, sum([a != b for a, b in zip(y_test_i, optimal_model2.predict(X_test_i))]) / len(y_test_i))
@@ -158,10 +199,38 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
             E_test_i_model2 = np.append(E_test_i_model2, np.square(y_test_i - optimal_model2.predict(X_test_i)).sum() / y_test_i.shape[0])
             E_test_i_model3 = np.append(E_test_i_model3, np.square(y_test_i - optimal_model3.predict(X_test_i)).sum() / y_test_i.shape[0])
 
+        for model_combo in itertools.combinations([optimal_model1, optimal_model2, optimal_model3], 2):
+            model1, model2 = model_combo
+            model1_name = model1.__class__.__name__
+            model2_name = model2.__class__.__name__
+            yhatA = model1.predict(X_test_i)
+            yhatB = model2.predict(X_test_i)
+            if classify:
+                # Setup 1: Method 11.3.2
+                pass
+            else:
+                # Setup 1: Method 11.3.4 for comparing regression models
+                z_L, z_U, p = compare_regression_models(y_test_i, yhatA, yhatB)
+                print("Regression models comparison:")
+                print(f"Comparing {model1_name} and {model2_name}:")
+                print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
+                print(f"p-value: {p:.4f}")
+
+                output_dict[f"regression_{model1_name}_{model2_name}: [zL, zU], p-value"] = {'conf': [z_L, z_U], 'p': p}
+
 
         print(f"E_test_{optimal_model1.__class__.__name__}_{K1_i}:", E_test_i_model1[K1_i-1])
         print(f"E_test_{optimal_model2.__class__.__name__}_{K1_i}:", E_test_i_model2[K1_i-1])
         print(f"E_test_{optimal_model3.__class__.__name__}_{K1_i}:", E_test_i_model3[K1_i-1])
+
+
+        # # Check if current model has lower E_test_i than previous best model
+        # if best_model1 is None or E_test_i_model1[K1_i-1] < E_test_i_model1[K1_i-2]:
+        #     best_model1 = optimal_model1
+        # if best_model2 is None or E_test_i_model2[K1_i-1] < E_test_i_model2[K1_i-2]:
+        #     best_model2 = optimal_model2
+        # if best_model3 is None or E_test_i_model3[K1_i-1] < E_test_i_model3[K1_i-2]:
+        #     best_model3 = optimal_model3
 
         print()
 
