@@ -43,6 +43,7 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 def namestr(obj):
     return [name for name in globals() if globals()[name] is obj][0]
 
+
 def compare_regression_models(y_true: np.ndarray, yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
     n = len(y_true)
     nu = n-1
@@ -69,6 +70,7 @@ def compare_regression_models(y_true: np.ndarray, yhatA: np.ndarray, yhatB: np.n
     p = 2 * st.t.cdf(-np.abs(z_hat), df=nu, loc=0, scale=z_tilde_sigma)
 
     return z_L, z_U, p
+
 
 def compare_classification_models(yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
     n = len(yhatA)
@@ -229,6 +231,19 @@ def KFold_CV(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> np.ndarr
         z_model = np.append(z_model, np.abs(y[D_test]-M.predict(X[D_test])))
 
     return z_model
+
+
+def KFold_CV_Classifiers(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> np.ndarray:
+    cv = KFold(n_splits=K, shuffle=True, random_state=42)
+
+    yhat = np.ndarray([])
+
+    for Ki, (D_train, D_test) in enumerate(cv.split(X), start=1):
+        M.fit(X[D_train], y[D_train])
+        yhat = np.append(yhat, M.predict(X[D_test]))
+
+    return yhat
+
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
@@ -798,9 +813,13 @@ class Regression:
             p = 2 * st.t.cdf(-np.abs(zhat), df=self.N-1, loc=0, scale=zstd)
 
             print("\nRegression models comparison:")
-            print(f"Comparing {model1_name} and {model2_name}:")
+            print(f"Comparing {model2_name} and {model1_name}:")
+            print("H0: they have same performance")
             print(f"Confidence interval: [{zL:.4f}, {zU:.4f}]")
             print(f"p-value: {p}")
+            print(f"Null hypothesis accepted: {p > alpha}")
+            print("They have the same performance" if p > alpha else "They have different performance")
+
 
 class Classification:
     def __init__(self, dataset: Dataset):
@@ -852,9 +871,50 @@ class Classification:
 
             f.write("\n\n")
 
-    def compare_models(models: List[BaseEstimator], X):
+    def compare_models(self, models: List[BaseEstimator]):
         # Setup 1: Method 11.3.2
-        pass
+        alpha = 0.05
+        
+        for model_combo in itertools.combinations(models, 2):
+            model2, model1 = model_combo
+            model1_name = model1.__class__.__name__
+            model2_name = model2.__class__.__name__
+
+            # Setup 1: Method 11.3.4 for comparing regression models
+            # Evaluated on same cross-validation splits with seed 42
+            yhatA = KFold_CV_Classifiers(K=10, M=model1, X=self.X, y=self.y)
+            yhatB = KFold_CV_Classifiers(K=10, M=model2, X=self.X, y=self.y)
+
+            cA = np.array([int(a == b) for a, b in zip(yhatA, self.y)])
+            cB = np.array([int(a == b) for a, b in zip(yhatB, self.y)])
+
+            n12 = np.sum(cA*(1-cB))
+            n21 = np.sum((1-cA)*cB)
+
+            if n12 + n21 < 5:
+                raise ValueError(f"f and g are not useful since n12+n21<5 ({n12}+{n21}<5).")
+
+            
+            thetahat = (n12 - n21)/self.N # E_theta
+            Q = (self.N**2*(self.N+1)*(thetahat+1)*(1-thetahat))/(self.N*(n12+n21)-(n12-n21)**2)
+            f = (thetahat+1)/2 * (Q-1)
+            g = (1-thetahat)/2 * (Q-1)
+
+            thetaL = 2 * st.beta.ppf(alpha/2, f, g) - 1
+            thetaU = 2 * st.beta.ppf(1-alpha/2, f, g) - 1
+
+            # Test if thy have different performance
+            # H0: they have same performance
+            # H1: they have different performance
+            p = 2 * st.binom.cdf(k=np.min([n12, n21]), n=n12+n21, p=0.5)
+
+            print("\nClassifications models comparison:")
+            print(f"Comparing {model2_name} and {model1_name}:")
+            print("H0: they have same performance")
+            print(f"Confidence interval for theta: [{thetaL:.4f}, {thetaU:.4f}]")
+            print(f"p-value: {p}")
+            print(f"Null hypothesis accepted: {p > alpha}")
+            print("They have the same performance" if p > alpha else "They have different performance")
 
 
 if __name__ == "__main__":
@@ -862,24 +922,11 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
-    # logistic_model = LogisticRegression(max_iter=1000)  # Add any specific hyperparameters you need
-
-    # # Define your models
-    # # models = [MLPClassifier(...), LogisticRegression(...), DummyClassifier(...)]
-
-    # # Add the models to a list
-    # models = [logistic_model]  # Replace ... with other models instances if you have any
-
-    # Perform the two-step cross-validation
-    # dataset.two_step_cross_validation(models=models, K1=10, K2=10)
-
-    #print(dataset.y)
-
-    data = Regression(dataset)
-    # data = Classification(dataset)
+    # data = Regression(dataset)
+    data = Classification(dataset)
     # data.two_step(max_iter=20000, K=10)
 
-    data.compare_models([Ridge(alpha=0.01), MLPRegressor(hidden_layer_sizes=9, max_iter=20000), DummyRegressor(strategy="mean")])
-
+    # data.compare_models([Ridge(alpha=0.01), MLPRegressor(hidden_layer_sizes=9, max_iter=20000), DummyRegressor(strategy="mean")])
+    data.compare_models([LogisticRegression(C=10, penalty='l2'), MLPClassifier(hidden_layer_sizes=1, max_iter=20000), DummyClassifier(strategy="most_frequent")])
 
 
