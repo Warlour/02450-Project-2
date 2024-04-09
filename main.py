@@ -43,19 +43,31 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 def namestr(obj):
     return [name for name in globals() if globals()[name] is obj][0]
 
-def compare_regression_models(y_true, y_pred_model1, y_pred_model2, alpha=0.05):
+def compare_regression_models(y_true, yhatA, yhatB, alpha=0.05):
     n = len(y_true)
+    nu = n-1
+
+    # Compute z with squared loss
+    zA = np.abs(y_true - yhatA) ** 2
+    zB = np.abs(y_true - yhatB) ** 2
+
     # Compute differences in loss
-    z = np.abs(y_true - y_pred_model1) ** 2 - np.abs(y_true - y_pred_model2) ** 2
+    z = zA - zB
+
     # Compute mean of differences
-    z_hat = np.mean(z)
+    z_hat = 1/n * np.sum(z)
+
     # Compute standard deviation of differences
     z_tilde_sigma_sq = np.sum((z - z_hat) ** 2) / (n * (n - 1))
     z_tilde_sigma = np.sqrt(z_tilde_sigma_sq)
+
     # Compute confidence interval
-    z_L, z_U = st.t.interval(1 - alpha, df=n - 1, loc=z_hat, scale=z_tilde_sigma)
+    z_L = st.t.ppf(alpha / 2, df=nu, loc=z_hat, scale=z_tilde_sigma)
+    z_U = st.t.ppf(1 - alpha / 2, df=nu, loc=z_hat, scale=z_tilde_sigma)
+
     # Compute p-value
-    p = 2 * st.t.cdf(-np.abs(z_hat) / z_tilde_sigma, df=n - 1)
+    p = 2 * st.t.cdf(-np.abs(z_hat), df=nu, loc=0, scale=z_tilde_sigma)
+
     return z_L, z_U, p
 
 def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, model_amounts: int, classify: bool = False) -> None:
@@ -128,14 +140,14 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
                 model1, model2 = model_combo
                 model1_name = model1.__class__.__name__
                 model2_name = model2.__class__.__name__
-                y_pred_model1 = model1.predict(X_test_i)
-                y_pred_model2 = model2.predict(X_test_i)
-                z_L, z_U, p = compare_regression_models(y_test_i, y_pred_model1, y_pred_model2)
+                yhatA = model1.predict(X_test_i)
+                yhatB = model2.predict(X_test_i)
+                z_L, z_U, p = compare_regression_models(y_test_i, yhatA, yhatB)
                 print(f"Comparing {model1_name} and {model2_name}:")
                 print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
                 print(f"p-value: {p:.4f}")
 
-                output_dict[f"{model1_name}_{model2_name}: [zL, zU, p-value]"] = [z_L, z_U, p]
+                output_dict[f"{model1_name}_{model2_name}: [zL, zU], p-value"] = {'conf': [z_L, z_U], 'p': p}
 
             # Calculate test error on optimal model when tested on D_test_i
             E_test_i_model1 = np.append(E_test_i_model1, sum([a != b for a, b in zip(y_test_i, optimal_model1.predict(X_test_i))]) / len(y_test_i))
@@ -780,9 +792,9 @@ if __name__ == "__main__":
 
     #print(dataset.y)
 
-    # data = Regression(dataset)
-    data = Classification(dataset)
-    data.two_step(max_iter=10, K=10)
+    data = Regression(dataset)
+    # data = Classification(dataset)
+    data.two_step(max_iter=20000, K=10)
 
 
 

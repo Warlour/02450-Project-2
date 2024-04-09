@@ -1,15 +1,13 @@
-optimal_lambdas: [1000.0, 100.0, 10.0, 10.0, 1000.0, 10.0, 100.0, 10.0, 10.0, 1.0]
-optimal_hidden_layers: [(9,), (8,), (10,), (8,), (9,), (10,), (10,), (7,), (8,), (10,)]
-
-LogisticRegression_MLPClassifier: [zL, zU, p-value]: [-0.07210695198534976, -0.02238123699102819, 0.00021549277706079488]
-LogisticRegression_DummyClassifier: [zL, zU, p-value]: [-0.42909204494693254, -0.31631477920004913, 3.322458528796836e-32]
-MLPClassifier_DummyClassifier: [zL, zU, p-value]: [-0.38652382956557946, -0.2643948056050242, 9.64902253471547e-23]
-
-E_test_LogisticRegression: [0.079 0.063 0.055 0.084 0.071 0.071 0.092 0.071 0.055 0.058]
-E_test_MLPClassifier: [0.084 0.058 0.129 0.115 0.11  0.076 0.131 0.115 0.063 0.105]
-E_test_DummyClassifier: [0.441 0.449 0.457 0.449 0.388 0.457 0.417 0.407 0.383 0.43 ]
-E_gen_LogisticRegression: 0.07
-E_gen_MLPClassifier: 0.099
+optimal_lambdas: [1.0, 10.0, 100.0, 10.0, 10.0, 10.0, 1000.0, 10.0, 10.0, 1000.0]
+optimal_hidden_layers: [(2,), (2,), (2,), (9,), (2,), (8,), (3,), (6,), (3,), (2,)]
+LogisticRegression_MLPClassifier: [zL, zU], p-value: {'conf': [-0.014176486785976593, 0.008927142953955592], 'p': 0.6553147008934367}
+LogisticRegression_DummyClassifier: [zL, zU], p-value: {'conf': [-0.3918522761661213, -0.28006373433256637], 'p': 1.1606485503003987e-27}
+MLPClassifier_DummyClassifier: [zL, zU], p-value: {'conf': [-0.3886680677672678, -0.2779985988993988], 'p': 9.235828564878465e-28}
+E_test_LogisticRegression: [0.068 0.071 0.066 0.052 0.087 0.068 0.063 0.076 0.089 0.071]
+E_test_MLPClassifier: [0.063 0.076 0.068 0.05  0.089 0.076 0.063 0.076 0.079 0.073]
+E_test_DummyClassifier: [0.441 0.42  0.417 0.415 0.394 0.444 0.465 0.43  0.446 0.407]
+E_gen_LogisticRegression: 0.071
+E_gen_MLPClassifier: 0.071
 E_gen_DummyClassifier: 0.428
 
 
