@@ -43,7 +43,7 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 def namestr(obj):
     return [name for name in globals() if globals()[name] is obj][0]
 
-def compare_regression_models(y_true, yhatA, yhatB, alpha: float = 0.05):
+def compare_regression_models(y_true: np.ndarray, yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
     n = len(y_true)
     nu = n-1
 
@@ -145,10 +145,6 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
     E_test_i_model2 = np.array([])
     E_test_i_model3 = np.array([])
 
-    best_model1 = None
-    best_model2 = None
-    best_model3 = None
-
     for K1_i, (D_par_i, D_test_i) in enumerate(outer_cv.split(X), start=1):
         print("----------------------")
         E_gen_s = []
@@ -170,8 +166,6 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
         for s in range(len(M)):
             summ = sum((len(D_val_j) / len(D_par_i)) * E_val_j[j, s] for j in range(K2))
             E_gen_s.append(summ)
-
-        
 
 
         oridx = np.argmin(E_gen_s[0:model_amounts])
@@ -199,39 +193,10 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
             E_test_i_model2 = np.append(E_test_i_model2, np.square(y_test_i - optimal_model2.predict(X_test_i)).sum() / y_test_i.shape[0])
             E_test_i_model3 = np.append(E_test_i_model3, np.square(y_test_i - optimal_model3.predict(X_test_i)).sum() / y_test_i.shape[0])
 
-        for model_combo in itertools.combinations([optimal_model1, optimal_model2, optimal_model3], 2):
-            model1, model2 = model_combo
-            model1_name = model1.__class__.__name__
-            model2_name = model2.__class__.__name__
-            yhatA = model1.predict(X_test_i)
-            yhatB = model2.predict(X_test_i)
-            if classify:
-                # Setup 1: Method 11.3.2
-                pass
-            else:
-                # Setup 1: Method 11.3.4 for comparing regression models
-                z_L, z_U, p = compare_regression_models(y_test_i, yhatA, yhatB)
-                print("Regression models comparison:")
-                print(f"Comparing {model1_name} and {model2_name}:")
-                print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
-                print(f"p-value: {p:.4f}")
-
-                output_dict[f"regression_{model1_name}_{model2_name}: [zL, zU], p-value"] = {'conf': [z_L, z_U], 'p': p}
-
 
         print(f"E_test_{optimal_model1.__class__.__name__}_{K1_i}:", E_test_i_model1[K1_i-1])
         print(f"E_test_{optimal_model2.__class__.__name__}_{K1_i}:", E_test_i_model2[K1_i-1])
         print(f"E_test_{optimal_model3.__class__.__name__}_{K1_i}:", E_test_i_model3[K1_i-1])
-
-
-        # # Check if current model has lower E_test_i than previous best model
-        # if best_model1 is None or E_test_i_model1[K1_i-1] < E_test_i_model1[K1_i-2]:
-        #     best_model1 = optimal_model1
-        # if best_model2 is None or E_test_i_model2[K1_i-1] < E_test_i_model2[K1_i-2]:
-        #     best_model2 = optimal_model2
-        # if best_model3 is None or E_test_i_model3[K1_i-1] < E_test_i_model3[K1_i-2]:
-        #     best_model3 = optimal_model3
-
         print()
 
 
@@ -253,6 +218,10 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
     output_dict[f"E_gen_{optimal_model3.__class__.__name__}"] = np.round(E_gen_model3, decimals=3)
     
     return output_dict
+
+
+def KFold_CV(K: int, ):
+    pass
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
@@ -746,6 +715,7 @@ class Dataset:
             else:
                 print(f'Outer folds: {scores}')
 
+
 class Regression:
     def __init__(self, dataset: Dataset):
         self.dataset = dataset
@@ -792,6 +762,26 @@ class Regression:
                 f.write(f"{key}: {value}\n")
             
             f.write("\n\n")
+
+    def compare_models(models: List[BaseEstimator], X_test, y_true):
+        # Setup 1: Method 11.3.4
+
+        for model_combo in itertools.combinations(models, 2):
+            model1, model2 = model_combo
+            model1_name = model1.__class__.__name__
+            model2_name = model2.__class__.__name__
+            yhatA = model1.predict(X_test)
+            yhatB = model2.predict(X_test)
+            
+            # Setup 1: Method 11.3.4 for comparing regression models
+            z_L, z_U, p = compare_regression_models(y_true, yhatA, yhatB)
+            print("Regression models comparison:")
+            print(f"Comparing {model1_name} and {model2_name}:")
+            print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
+            print(f"p-value: {p:.4f}")
+
+            # output_dict[f"regression_{model1_name}_{model2_name}: [zL, zU], p-value"] = {'conf': [z_L, z_U], 'p': p}
+
 
 class Classification:
     def __init__(self, dataset: Dataset):
@@ -842,6 +832,11 @@ class Classification:
                 f.write(f"{key}: {value}\n")
 
             f.write("\n\n")
+
+    def compare_models(models: List[BaseEstimator], X):
+        # Setup 1: Method 11.3.2
+        pass
+
 
 if __name__ == "__main__":
     dataset = Dataset(uci_id = 545)
