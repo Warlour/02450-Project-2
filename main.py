@@ -70,7 +70,6 @@ def compare_regression_models(y_true: np.ndarray, yhatA: np.ndarray, yhatB: np.n
 
     return z_L, z_U, p
 
-
 def compare_classification_models(yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
     n = len(yhatA)
     n12 = np.sum((yhatA == 1) & (yhatB == 0))  # A is correct, B is incorrect
@@ -219,9 +218,17 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
     
     return output_dict
 
+# Algorithm 5
+def KFold_CV(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> np.ndarray:
+    cv = KFold(n_splits=K, shuffle=True, random_state=42)
 
-def KFold_CV(K: int, ):
-    pass
+    z_model = np.ndarray([])
+
+    for Ki, (D_train, D_test) in enumerate(cv.split(X), start=1):
+        M.fit(X[D_train], y[D_train])
+        z_model = np.append(z_model, np.abs(y[D_test]-M.predict(X[D_test])))
+
+    return z_model
 
 class Dataset:
     def __init__(self, uci_name: Optional[str] = None, uci_id: Optional[int] = None):
@@ -763,25 +770,37 @@ class Regression:
             
             f.write("\n\n")
 
-    def compare_models(models: List[BaseEstimator], X_test, y_true):
+    def compare_models(self, models: List[BaseEstimator]):
         # Setup 1: Method 11.3.4
+        alpha = 0.05
+
+        if self.N < 30:
+            raise ValueError("The number of samples is too small for this method.")
+
 
         for model_combo in itertools.combinations(models, 2):
-            model1, model2 = model_combo
+            model2, model1 = model_combo
             model1_name = model1.__class__.__name__
             model2_name = model2.__class__.__name__
-            yhatA = model1.predict(X_test)
-            yhatB = model2.predict(X_test)
-            
+
             # Setup 1: Method 11.3.4 for comparing regression models
-            z_L, z_U, p = compare_regression_models(y_true, yhatA, yhatB)
-            print("Regression models comparison:")
+            zA = KFold_CV(K=10, M=model1, X=self.X, y=self.y)
+            zB = KFold_CV(K=10, M=model2, X=self.X, y=self.y)
+
+            z = zA - zB # Loss difference
+            zhat = np.mean(z)
+            zvar = 1/(self.N*(self.N-1)) * np.sum((z-zhat)**2)
+            zstd = np.sqrt(zvar)
+
+            zL = st.t.ppf(alpha/2, df=self.N-1, loc=zhat, scale=zstd)
+            zU = st.t.ppf(1-alpha/2, df=self.N-1, loc=zhat, scale=zstd)
+
+            p = 2 * st.t.cdf(-np.abs(zhat), df=self.N-1, loc=0, scale=zstd)
+
+            print("\nRegression models comparison:")
             print(f"Comparing {model1_name} and {model2_name}:")
-            print(f"Confidence interval: [{z_L:.4f}, {z_U:.4f}]")
-            print(f"p-value: {p:.4f}")
-
-            # output_dict[f"regression_{model1_name}_{model2_name}: [zL, zU], p-value"] = {'conf': [z_L, z_U], 'p': p}
-
+            print(f"Confidence interval: [{zL:.4f}, {zU:.4f}]")
+            print(f"p-value: {p}")
 
 class Classification:
     def __init__(self, dataset: Dataset):
@@ -858,7 +877,9 @@ if __name__ == "__main__":
 
     data = Regression(dataset)
     # data = Classification(dataset)
-    data.two_step(max_iter=20000, K=10)
+    # data.two_step(max_iter=20000, K=10)
+
+    data.compare_models([Ridge(alpha=0.01), MLPRegressor(hidden_layer_sizes=9, max_iter=20000), DummyRegressor(strategy="mean")])
 
 
 
