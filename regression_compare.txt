@@ -1,0 +1,50 @@
+Regression models comparison:
+Comparing Ridge and MLPRegressor:
+H0: they have same performance
+Confidence interval: [-0.7564, 0.3947]
+p-value: 0.5378345090769958
+Null hypothesis accepted: True
+They have the same performance
+Other data:
+   zhat:-0.1809, zvar:0.0862, zstd:0.2935
+
+   zA(3811):[ 1.         21.14220171 23.94089254 ... 49.02363334 25.36360539
+ 30.9317697 ]
+   zB(3811):[ 0.         25.06981833 12.78783377 ... 46.00300887 32.37059051
+ 26.92639927]
+   z(3811):[ 1.         -3.92761661 11.15305876 ...  3.02062446 -7.00698512
+  4.00537043]
+
+Regression models comparison:
+Comparing Ridge and DummyRegressor:
+H0: they have same performance
+Confidence interval: [1353.3332, 1417.1271]
+p-value: 0.0
+Null hypothesis accepted: False
+They have different performance
+Other data:
+   zhat:1385.2302, zvar:264.6833, zstd:16.2691
+
+   zA(3811):[   4.00537043 3270.42694663  844.42694663 ... 1905.05832604  117.05832604
+  440.94167396]
+   zB(3811):[12680.05832604    25.06981833    12.78783377 ...    46.00300887
+    32.37059051    26.92639927]
+   z(3811):[-12676.05295561   3245.35712831    831.63911286 ...   1859.05531717
+     84.68773554    414.01527469]
+
+Regression models comparison:
+Comparing MLPRegressor and DummyRegressor:
+H0: they have same performance
+Confidence interval: [1353.6655, 1417.3723]
+p-value: 0.0
+Null hypothesis accepted: False
+They have different performance
+Other data:
+   zhat:1385.5189, zvar:263.9611, zstd:16.2469
+
+   zA(3811):[ 414.01527469 3270.42694663  844.42694663 ... 1905.05832604  117.05832604
+  440.94167396]
+   zB(3811):[12680.05832604    21.14220171    23.94089254 ...    49.02363334
+    25.36360539    30.9317697 ]
+   z(3811):[-12266.04305135   3249.28474492    820.48605409 ...   1856.03469271
+     91.69472066    410.00990426]
