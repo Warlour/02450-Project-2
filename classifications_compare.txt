@@ -1,0 +1,47 @@
+Classifications models comparison:
+Comparing LogisticRegression and MLPClassifier:
+H0: they have same performance
+Confidence interval for theta: [-0.0056, 0.0014]
+p-value: 0.3019956131896606
+Null hypothesis accepted: True
+They have the same performance
+Other data:
+   n12:19, n21:27
+   Q:315764.1339, f:157550.0571, g:158213.0768
+
+   yhatA(3811):[1. 0. 0. ... 1. 1. 1.]
+   yhatB(3811):[0.5 0.  0.  ... 1.  1.  1. ]
+   cA(3810):[0 1 1 ... 1 1 1]
+   cB(3810):[0 1 1 ... 1 1 1]
+
+Classifications models comparison:
+Comparing LogisticRegression and DummyClassifier:
+H0: they have same performance
+Confidence interval for theta: [0.0071, 0.0485]
+p-value: 0.00906677090809087
+Null hypothesis accepted: False
+They have different performance
+Other data:
+   n12:863, n21:757
+   Q:8972.3031, f:4610.4492, g:4360.8539
+
+   yhatA(3811):[1. 1. 1. ... 1. 1. 1.]
+   yhatB(3811):[1.88e-321 0.00e+000 0.00e+000 ... 1.00e+000 1.00e+000 1.00e+000]
+   cA(3810):[0 0 0 ... 1 1 1]
+   cB(3810):[0 1 1 ... 1 1 1]
+
+Classifications models comparison:
+Comparing MLPClassifier and DummyClassifier:
+H0: they have same performance
+Confidence interval for theta: [0.0091, 0.0507]
+p-value: 0.005305140423129868
+Null hypothesis accepted: False
+They have different performance
+Other data:
+   n12:879, n21:765
+   Q:8842.5016, f:4553.0252, g:4288.4763
+
+   yhatA(3811):[1. 1. 1. ... 1. 1. 1.]
+   yhatB(3811):[1.88e-321 0.00e+000 0.00e+000 ... 1.00e+000 1.00e+000 1.00e+000]
+   cA(3810):[0 0 0 ... 1 1 1]
+   cB(3810):[0 1 1 ... 1 1 1]

@@ -819,6 +819,8 @@ class Regression:
             print(f"p-value: {p}")
             print(f"Null hypothesis accepted: {p > alpha}")
             print("They have the same performance" if p > alpha else "They have different performance")
+            print(f"Other data:\n   zhat:{zhat:.4f}, zvar:{zvar:.4f}, zstd:{zstd:.4f}")
+            print(f"\n   zA({len(zA)}):{zA}\n   zB({len(zB)}):{zB}\n   z({len(z)}):{z}")
 
 
 class Classification:
@@ -915,6 +917,8 @@ class Classification:
             print(f"p-value: {p}")
             print(f"Null hypothesis accepted: {p > alpha}")
             print("They have the same performance" if p > alpha else "They have different performance")
+            print(f"Other data:\n   n12:{n12}, n21:{n21}\n   Q:{Q:.4f}, f:{f:.4f}, g:{g:.4f}")
+            print(f"\n   yhatA({len(yhatA)}):{yhatA}\n   yhatB({len(yhatB)}):{yhatB}\n   cA({len(cA)}):{cA}\n   cB({len(cB)}):{cB}")
 
 
 if __name__ == "__main__":
@@ -922,11 +926,17 @@ if __name__ == "__main__":
     # Features: Area, Perimeter, Major_Axis_Length, Minor_Axis_Length, Eccentricity, Convex_Area, Extent
     # Targets: Class (Cammeo, Osmancik)
 
+    np.random.seed(42)
+
     data = Regression(dataset)
+    data.compare_models([Ridge(alpha=1e-3, random_state=42), MLPRegressor(hidden_layer_sizes=9, max_iter=20000, random_state=42), DummyRegressor(strategy="mean")])
+    
     # data = Classification(dataset)
+    # data.compare_models([LogisticRegression(C=10, penalty='l2', random_state=42), MLPClassifier(hidden_layer_sizes=1, max_iter=20000, random_state=42), DummyClassifier(strategy="most_frequent")])
+    
+
     # data.two_step(max_iter=20000, K=10)
 
-    data.compare_models([Ridge(alpha=1e-3), MLPRegressor(hidden_layer_sizes=9, max_iter=20000), DummyRegressor(strategy="mean")])
-    # data.compare_models([LogisticRegression(C=10, penalty='l2'), MLPClassifier(hidden_layer_sizes=1, max_iter=20000), DummyClassifier(strategy="most_frequent")])
+
 
 
