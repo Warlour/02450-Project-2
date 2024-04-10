@@ -44,83 +44,6 @@ def namestr(obj):
     return [name for name in globals() if globals()[name] is obj][0]
 
 
-def compare_regression_models(y_true: np.ndarray, yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
-    n = len(y_true)
-    nu = n-1
-
-    # Compute z with squared loss
-    zA = np.abs(y_true - yhatA) ** 2
-    zB = np.abs(y_true - yhatB) ** 2
-
-    # Compute differences in loss
-    z = zA - zB
-
-    # Compute mean of differences
-    z_hat = 1/n * np.sum(z)
-
-    # Compute standard deviation of differences
-    z_tilde_sigma_sq = np.sum((z - z_hat) ** 2) / (n * (n - 1))
-    z_tilde_sigma = np.sqrt(z_tilde_sigma_sq)
-
-    # Compute confidence interval
-    z_L = st.t.ppf(alpha / 2, df=nu, loc=z_hat, scale=z_tilde_sigma)
-    z_U = st.t.ppf(1 - alpha / 2, df=nu, loc=z_hat, scale=z_tilde_sigma)
-
-    # Compute p-value
-    p = 2 * st.t.cdf(-np.abs(z_hat), df=nu, loc=0, scale=z_tilde_sigma)
-
-    return z_L, z_U, p
-
-
-def compare_classification_models(yhatA: np.ndarray, yhatB: np.ndarray, alpha: float = 0.05):
-    n = len(yhatA)
-    n12 = np.sum((yhatA == 1) & (yhatB == 0))  # A is correct, B is incorrect
-    n21 = np.sum((yhatA == 0) & (yhatB == 1))  # B is correct, A is incorrect
-
-    theta_hat = (n12 - n21) / n
-
-    if n12 + n21 < 5:
-        print(f"This interval: (n_12: {n12}, n_21: {n21}) is not useful.")
-        return None, None, None
-    
-    # Computing parameters for confidence interval
-    E_theta = (n12 - n21) / n
-    Q = (n**2 * (n + 1) * (E_theta + 1) * (1 - E_theta)) / (n * (n12 + n21) - (n12 - n21)**2)
-    f = ((E_theta + 1) / 2) * (Q - 1)
-    g = ((1 - E_theta) / 2) * (Q - 1)
-
-    # Confidence interval computation
-    theta_L = 2 * np.percentile(np.random.beta((theta_hat + 1) / 2, (1 - theta_hat) / 2, size=10000), alpha / 2) - 1
-    theta_U = 2 * np.percentile(np.random.beta((theta_hat + 1) / 2, (1 - theta_hat) / 2, size=10000), 100 - alpha / 2) - 1
-
-    # Compute p-value
-    m = min(n12, n21)
-    p = 2 * (1 - np.sum(np.random.binomial(n=n12 + n21, p=0.5, size=10000) <= m) / 10000)
-
-    return theta_L, theta_U, p
-    
-    
-    
-    
-    # cA = np.array([int(a == b) for a, b in zip(yhatA, y_true)])
-    # cB = np.array([int(a == b) for a, b in zip(yhatB, y_true)])
-    # n = np.array([
-    #     [np.sum(cA*cB), np.sum(cA*(1-cB))], 
-    #     [np.sum((1-cA)*cB), np.sum((1-cA)*(1-cB))]
-    # ])
-
-    # # Estimate performance difference
-    # # Estimated difference in accuracy of model A and B
-    # theta_hat = (n[1-1, 2-1] - n[2-1, 1-1])/n
-
-    # # Approximate 1-alpha confidence interval for theta
-    # E_theta = theta_hat
-    # Q = (n**2*(n+1)*(E_theta+1)(1-E_theta))/(n*(n[1-1, 2-1] + n[2-1, 1-1]) - (n[1-1, 2-1]-n[2-1, 1-1])**2)
-    # f = (E_theta+1)/2 * (Q-1)
-    # g = (1-E_theta)/2 * (Q-1)
-    # theta_L = 2*st.t.ppf(f/2, ) - 1
-
-
 def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, model_amounts: int, classify: bool = False) -> None:
     '''
     param X: The feature matrix.
@@ -220,6 +143,7 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
     
     return output_dict
 
+
 # Algorithm 5
 def KFold_CV(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray]:
     cv = KFold(n_splits=K, shuffle=True, random_state=42)
@@ -236,7 +160,7 @@ def KFold_CV(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> Tuple[np
 
     return (z_model, z_model_hat)
 
-
+# Algorithm 5
 def KFold_CV_Classifiers(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> np.ndarray:
     cv = KFold(n_splits=K, shuffle=True, random_state=42)
 
@@ -894,8 +818,12 @@ class Classification:
             cA = np.array([int(a == b) for a, b in zip(yhatA, self.y)])
             cB = np.array([int(a == b) for a, b in zip(yhatB, self.y)])
 
+            # n11 = np.sum(cA*cB)
             n12 = np.sum(cA*(1-cB))
             n21 = np.sum((1-cA)*cB)
+            # n22 = np.sum((1-cA)*(1-cB))
+
+            # n = np.array([[n11, n12], [n21, n22]])
 
             if n12 + n21 < 5:
                 raise ValueError(f"f and g are not useful since n12+n21<5 ({n12}+{n21}<5).")
@@ -932,20 +860,24 @@ if __name__ == "__main__":
 
     np.random.seed(42)
 
-    data = Regression(dataset)
-    regmodels = [Ridge(alpha=1e-3, random_state=42), MLPRegressor(hidden_layer_sizes=9, max_iter=1, random_state=42), DummyRegressor(strategy="mean")]
+    # data = Regression(dataset)
+    # regmodels = [Ridge(alpha=1e-3, random_state=42), MLPRegressor(hidden_layer_sizes=9, max_iter=1, random_state=42), DummyRegressor(strategy="mean")]
     # data.compare_models(regmodels)
 
-    zA, zAhat = KFold_CV(K=10, M=regmodels[0], X=data.X, y=data.y)
-    zB, zBhat = KFold_CV(K=10, M=regmodels[1], X=data.X, y=data.y)
-    zC, zChat = KFold_CV(K=10, M=regmodels[2], X=data.X, y=data.y)
-    print("zAhat:", zAhat.tolist())
-    print("zBhat:", zBhat.tolist())
-    print("zChat:", zChat.tolist())
+    # zA, zAhat = KFold_CV(K=10, M=regmodels[0], X=data.X, y=data.y)
+    # zB, zBhat = KFold_CV(K=10, M=regmodels[1], X=data.X, y=data.y)
+    # zC, zChat = KFold_CV(K=10, M=regmodels[2], X=data.X, y=data.y)
+    # print("zAhat:", zAhat.tolist())
+    # print("zBhat:", zBhat.tolist())
+    # print("zChat:", zChat.tolist())
     
-    # data = Classification(dataset)
+    data = Classification(dataset)
     # clasmodels = [LogisticRegression(C=10, penalty='l2', random_state=42), MLPClassifier(hidden_layer_sizes=1, max_iter=20000, random_state=42), DummyClassifier(strategy="most_frequent")]
     # data.compare_models(clasmodels)
+
+    model = LogisticRegression(C=10, penalty='l2', random_state=42)
+    # Train logistic regression model
+    model.fit(data.X, data.y,)
     
 
     # data.two_step(max_iter=20000, K=10)
