@@ -221,16 +221,20 @@ def two_step_cross_validation(X, y, M: List[BaseEstimator], K1: int, K2: int, mo
     return output_dict
 
 # Algorithm 5
-def KFold_CV(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> np.ndarray:
+def KFold_CV(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray]:
     cv = KFold(n_splits=K, shuffle=True, random_state=42)
 
+    z_model_hat = np.ndarray([])
     z_model = np.ndarray([])
 
     for Ki, (D_train, D_test) in enumerate(cv.split(X), start=1):
         M.fit(X[D_train], y[D_train])
-        z_model = np.append(z_model, np.abs(y[D_test]-M.predict(X[D_test])))
+        model_pred = M.predict(X[D_test])
+        z_model = np.append(z_model, np.abs(y[D_test]-model_pred))
 
-    return z_model
+        z_model_hat = np.append(z_model_hat, np.mean(np.abs(y[D_test]-model_pred)))
+
+    return (z_model, z_model_hat)
 
 
 def KFold_CV_Classifiers(K: int, M: BaseEstimator, X: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -799,8 +803,8 @@ class Regression:
             model2_name = model2.__class__.__name__
 
             # Setup 1: Method 11.3.4 for comparing regression models
-            zA = KFold_CV(K=10, M=model1, X=self.X, y=self.y)
-            zB = KFold_CV(K=10, M=model2, X=self.X, y=self.y)
+            zA, zAhat = KFold_CV(K=10, M=model1, X=self.X, y=self.y)
+            zB, zBhat = KFold_CV(K=10, M=model2, X=self.X, y=self.y)
 
             z = zA - zB # Loss difference
             zhat = np.mean(z)
@@ -819,7 +823,7 @@ class Regression:
             print(f"p-value: {p}")
             print(f"Null hypothesis accepted: {p > alpha}")
             print("They have the same performance" if p > alpha else "They have different performance")
-            print(f"Other data:\n   zhat:{zhat:.4f}, zvar:{zvar:.4f}, zstd:{zstd:.4f}")
+            print(f"Other data:\n   zhat:{zhat:.4f}, zvar:{zvar:.4f}, zstd:{zstd:.4f}, zAhat:{zAhat}, zBhat:{zBhat}")
             print(f"\n   zA({len(zA)}):{zA}\n   zB({len(zB)}):{zB}\n   z({len(z)}):{z}")
 
 
@@ -929,14 +933,19 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     data = Regression(dataset)
-    data.compare_models([Ridge(alpha=1e-3, random_state=42), MLPRegressor(hidden_layer_sizes=9, max_iter=20000, random_state=42), DummyRegressor(strategy="mean")])
+    regmodels = [Ridge(alpha=1e-3, random_state=42), MLPRegressor(hidden_layer_sizes=9, max_iter=1, random_state=42), DummyRegressor(strategy="mean")]
+    # data.compare_models(regmodels)
+
+    zA, zAhat = KFold_CV(K=10, M=regmodels[0], X=data.X, y=data.y)
+    zB, zBhat = KFold_CV(K=10, M=regmodels[1], X=data.X, y=data.y)
+    zC, zChat = KFold_CV(K=10, M=regmodels[2], X=data.X, y=data.y)
+    print("zAhat:", zAhat.tolist())
+    print("zBhat:", zBhat.tolist())
+    print("zChat:", zChat.tolist())
     
     # data = Classification(dataset)
-    # data.compare_models([LogisticRegression(C=10, penalty='l2', random_state=42), MLPClassifier(hidden_layer_sizes=1, max_iter=20000, random_state=42), DummyClassifier(strategy="most_frequent")])
+    # clasmodels = [LogisticRegression(C=10, penalty='l2', random_state=42), MLPClassifier(hidden_layer_sizes=1, max_iter=20000, random_state=42), DummyClassifier(strategy="most_frequent")]
+    # data.compare_models(clasmodels)
     
 
     # data.two_step(max_iter=20000, K=10)
-
-
-
-
