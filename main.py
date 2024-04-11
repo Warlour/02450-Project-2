@@ -4,7 +4,6 @@ from typing import Optional, Literal
 # Reading data
 from ucimlrepo import fetch_ucirepo
 from ucimlrepo.dotdict import dotdict # Dataset datatype
-from functions import *
 import numpy as np
 import pandas as pd
 
